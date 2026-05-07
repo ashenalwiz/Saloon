@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
-import { c, STATUS_META } from '../../styles/theme';
+import { STATUS_META } from '../../styles/theme';
 
 const ALL_STATUSES = ['pending','confirmed','awaiting_client','rescheduled','cancelled','completed','flagged'];
 
@@ -30,10 +30,11 @@ export default function UserBookingList() {
       {/* Header */}
       <div style={s.header} className="fade-up">
         <div>
+          <div style={s.eyebrow}>Your Appointments</div>
           <h2 style={s.title}>My Bookings</h2>
           <p style={s.sub}>{bookings.length} total appointment{bookings.length !== 1 ? 's' : ''}</p>
         </div>
-        <Link to="/salons" style={s.bookBtn}>+ New Booking</Link>
+        <Link to="/salons" style={s.bookBtn} className="lift-sm">✦ New Booking</Link>
       </div>
 
       {/* Filter chips */}
@@ -42,7 +43,7 @@ export default function UserBookingList() {
           style={{ ...s.chip, ...(filter === 'all' ? s.chipActive : {}) }}
           onClick={() => setFilter('all')}
         >
-          All <span style={s.chipCount}>{bookings.length}</span>
+          All <span style={{ ...s.chipCount, ...(filter === 'all' ? s.chipCountActive : {}) }}>{bookings.length}</span>
         </button>
         {ALL_STATUSES.map(st => {
           const count = bookings.filter(b => b.status === st).length;
@@ -72,9 +73,9 @@ export default function UserBookingList() {
 
       {!loading && shown.length === 0 && (
         <div style={s.empty} className="scale-in">
-          <div style={{ fontSize: 44, marginBottom: 14 }}>📅</div>
+          <div style={s.emptyOrb}>◷</div>
           <h3 style={s.emptyTitle}>No bookings found</h3>
-          <p style={{ color: c.textMuted, marginBottom: 20 }}>
+          <p style={{ color: 'var(--text-muted)', marginBottom: 24, fontSize: 15, lineHeight: 1.7 }}>
             {filter === 'all' ? "You haven't made any bookings yet." : `No ${STATUS_META[filter]?.label} bookings.`}
           </p>
           <Link to="/salons" style={s.bookBtn}>Browse Salons</Link>
@@ -88,11 +89,14 @@ export default function UserBookingList() {
           return (
             <div
               key={b.id}
-              style={{ ...s.card, borderLeft: `4px solid ${meta.color}` }}
+              style={s.card}
               className={`lift-sm fade-up d${Math.min(i + 1, 5)}`}
             >
+              {/* Left color accent bar */}
+              <div style={{ ...s.cardBar, background: `linear-gradient(180deg, ${meta.color}, ${meta.color}66)` }} />
+
               <div style={s.cardLeft}>
-                <div style={{ ...s.salonInitial, background: meta.bg, color: meta.color }}>
+                <div style={{ ...s.salonInitial, background: meta.bg, color: meta.color, boxShadow: `0 4px 14px ${meta.color}28` }}>
                   {b.salon_name?.[0]?.toUpperCase()}
                 </div>
               </div>
@@ -138,91 +142,106 @@ export default function UserBookingList() {
 const s = {
   header: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-    marginBottom: 24, flexWrap: 'wrap', gap: 14,
+    marginBottom: 28, flexWrap: 'wrap', gap: 14,
+  },
+  eyebrow: {
+    fontSize: 10, fontWeight: 700, color: '#A78BFA',
+    letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 6,
   },
   title: {
-    fontFamily: "'Playfair Display', serif",
-    fontSize: 28, fontWeight: 700, color: c.text, margin: 0, marginBottom: 4,
+    fontFamily: "'Cormorant Garamond', Georgia, serif",
+    fontSize: 30, fontWeight: 700, color: 'var(--text)', margin: 0, marginBottom: 4,
+    letterSpacing: '-0.01em',
   },
-  sub: { color: c.textMuted, fontSize: 13, margin: 0 },
+  sub: { color: 'var(--text-muted)', fontSize: 13, margin: 0 },
   bookBtn: {
-    padding: '10px 22px',
-    background: 'linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)',
-    color: '#fff', borderRadius: 12, fontWeight: 600, fontSize: 14,
-    textDecoration: 'none', boxShadow: '0 4px 12px rgba(124,58,237,.3)',
-    transition: 'box-shadow .18s ease, transform .18s ease',
+    padding: '11px 24px',
+    background: 'linear-gradient(135deg, #EC4899 0%, #BE185D 100%)',
+    color: '#fff', borderRadius: 12, fontWeight: 700, fontSize: 14,
+    textDecoration: 'none', boxShadow: '0 6px 20px rgba(236,72,153,.35)',
+    display: 'inline-flex', alignItems: 'center', gap: 7,
+    alignSelf: 'flex-start',
   },
 
-  filters: { display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 24 },
+  filters: { display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 26 },
   chip: {
-    padding: '6px 14px', borderRadius: 20,
+    padding: '7px 14px', borderRadius: 20,
     border: '1px solid var(--border)', background: 'var(--surface)',
-    color: c.textMuted, cursor: 'pointer', fontSize: 12, fontWeight: 500,
+    color: 'var(--text-muted)', cursor: 'pointer', fontSize: 12, fontWeight: 600,
     display: 'inline-flex', alignItems: 'center', gap: 6,
     transition: 'all .18s ease',
   },
-  chipActive: { background: c.primarySoft, color: c.primary, borderColor: c.primary },
+  chipActive: { background: 'rgba(124,58,237,.08)', color: '#7C3AED', borderColor: '#7C3AED50' },
   chipCount: {
-    background: '#F3F4F6', color: '#6B7280',
+    background: 'var(--surface2)', color: 'var(--text-muted)',
     borderRadius: 20, fontSize: 10, fontWeight: 700,
     padding: '1px 6px', transition: 'all .18s ease',
   },
+  chipCountActive: { background: 'rgba(124,58,237,.12)', color: '#7C3AED' },
 
   loadStack: { display: 'flex', flexDirection: 'column', gap: 12 },
-  skeleton: { height: 88, borderRadius: 16 },
+  skeleton: { height: 90, borderRadius: 18 },
 
   empty: {
-    background: 'var(--surface)', borderRadius: 20, padding: '60px 40px',
+    background: 'var(--surface)', borderRadius: 24, padding: '68px 40px',
     textAlign: 'center', border: '1px solid var(--border)',
     boxShadow: '0 4px 20px rgba(124,58,237,.06)',
   },
+  emptyOrb: {
+    fontSize: 44, marginBottom: 18, color: 'var(--text-light)',
+    display: 'block',
+  },
   emptyTitle: {
-    fontFamily: "'Playfair Display', serif",
-    fontSize: 20, color: c.text, marginBottom: 8,
+    fontFamily: "'Cormorant Garamond', Georgia, serif",
+    fontSize: 26, fontWeight: 700, color: 'var(--text)', marginBottom: 10,
   },
 
   list: { display: 'flex', flexDirection: 'column', gap: 12 },
   card: {
-    background: 'var(--surface)', borderRadius: 16,
-    boxShadow: '0 2px 10px rgba(0,0,0,.05)',
+    background: 'var(--surface)', borderRadius: 18,
+    boxShadow: '0 4px 16px rgba(124,58,237,.07), 0 1px 4px rgba(0,0,0,.04)',
     border: '1px solid var(--border)',
-    display: 'flex', alignItems: 'center', gap: 0,
+    display: 'flex', alignItems: 'center',
     overflow: 'hidden', transition: 'box-shadow .2s ease, transform .2s ease',
   },
-  cardLeft: { padding: '20px 16px 20px 20px', flexShrink: 0 },
+  cardBar: { width: 4, alignSelf: 'stretch', flexShrink: 0 },
+  cardLeft: { padding: '18px 14px 18px 18px', flexShrink: 0 },
   salonInitial: {
-    width: 42, height: 42, borderRadius: 12,
+    width: 44, height: 44, borderRadius: 13,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: 18, fontWeight: 800,
+    fontFamily: "'Cormorant Garamond', Georgia, serif",
+    fontSize: 20, fontWeight: 700,
   },
   cardMid: { flex: 1, padding: '16px 12px 16px 0' },
   salonName: {
-    fontFamily: "'Playfair Display', serif",
-    fontWeight: 700, fontSize: 15, color: c.text, marginBottom: 4,
+    fontFamily: "'Cormorant Garamond', Georgia, serif",
+    fontWeight: 700, fontSize: 16, color: 'var(--text)', marginBottom: 5,
+    letterSpacing: '-0.01em',
   },
-  dtRow: { fontSize: 12, color: c.textMuted, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 5 },
+  dtRow: { fontSize: 12, color: 'var(--text-muted)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 5 },
   dtIcon: { fontSize: 13 },
-  svcsRow: { fontSize: 12, color: c.textMuted },
+  svcsRow: { fontSize: 12, color: 'var(--text-muted)' },
   actionPill: {
     display: 'inline-block', marginTop: 6,
     fontSize: 11, fontWeight: 600, color: '#92400E',
-    background: '#FEF3C7', borderRadius: 20, padding: '3px 10px',
+    background: 'linear-gradient(to right, #FFFBEB, #FEF3C7)',
+    borderRadius: 20, padding: '3px 10px',
     border: '1px solid #FDE68A',
   },
   cardRight: {
-    display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 7,
+    display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8,
     padding: '16px 20px', flexShrink: 0,
   },
-  badge: { display: 'inline-flex', padding: '3px 11px', borderRadius: 20, fontSize: 11, fontWeight: 700 },
-  roundTag: { fontSize: 10, color: c.textLight },
+  badge: { display: 'inline-flex', padding: '4px 12px', borderRadius: 20, fontSize: 11, fontWeight: 700 },
+  roundTag: { fontSize: 10, color: 'var(--text-muted)' },
   rebookBtn: {
     fontSize: 12, color: '#059669', fontWeight: 600,
     padding: '5px 12px', background: '#ECFDF5', border: '1px solid #6EE7B7',
     borderRadius: 8, cursor: 'pointer', transition: 'background .15s ease',
   },
   detailBtn: {
-    fontSize: 13, color: c.primary, fontWeight: 700,
-    padding: '6px 14px', background: c.primarySoft, borderRadius: 8,
+    fontSize: 13, color: '#7C3AED', fontWeight: 700,
+    padding: '6px 14px', background: 'rgba(124,58,237,.08)', borderRadius: 8,
     transition: 'background .15s ease',
   },
 };

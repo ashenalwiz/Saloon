@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../api/axios';
 import { useOwner } from '../../context/OwnerContext';
-import { c, shadow } from '../../styles/theme';
 
 const CATS = ['Hair Care', 'Skin Care', 'Nail Care', 'Other'];
 const CAT_COLORS = { 'Hair Care': '#8B5CF6', 'Skin Care': '#10B981', 'Nail Care': '#EC4899', 'Other': '#6B7280' };
@@ -32,21 +31,24 @@ export default function OwnerInventory() {
 
   return (
     <div>
-      <div style={s.pageHeader}>
+      <div style={s.pageHeader} className="fade-up">
         <div>
+          <div style={s.eyebrow}>Stock</div>
           <h2 style={s.title}>Inventory</h2>
-          {lowStock.length > 0 && <p style={s.lowWarn}>⚠️ {lowStock.length} product{lowStock.length > 1 ? 's' : ''} below reorder level</p>}
+          {lowStock.length > 0 && (
+            <p style={s.lowWarn}>⚠ {lowStock.length} product{lowStock.length > 1 ? 's' : ''} below reorder level</p>
+          )}
         </div>
         <div style={s.headerBtns}>
           <Link to="/owner/inventory/grn" style={s.outlineBtn}>+ Receive Stock</Link>
           <Link to="/owner/inventory/sales" style={s.outlineBtn}>Record Sale</Link>
-          <button style={s.primaryBtn} onClick={() => setShow(!show)}>{show ? 'Cancel' : '+ New Product'}</button>
+          <button style={s.primaryBtn} onClick={() => setShow(!show)}>{show ? '✕ Cancel' : '+ New Product'}</button>
         </div>
       </div>
 
       {show && (
-        <div style={s.formCard}>
-          <h4 style={s.formTitle}>Add New Product</h4>
+        <div style={s.formCard} className="fade-up">
+          <div style={s.formTitle}>Add New Product</div>
           {error && <div style={s.alert}>{error}</div>}
           <form onSubmit={save} style={s.form}>
             <div style={s.formRow}>
@@ -81,7 +83,7 @@ export default function OwnerInventory() {
                 <input style={s.input} type="number" value={form.reorder_level} onChange={f('reorder_level')} />
               </div>
             </div>
-            <button style={s.saveBtn} type="submit">Save Product</button>
+            <button style={s.saveBtn} type="submit">✓ Save Product</button>
           </form>
         </div>
       )}
@@ -94,21 +96,24 @@ export default function OwnerInventory() {
           <tbody>
             {products.map(p => {
               const isLow = p.current_stock <= p.reorder_level;
+              const catColor = CAT_COLORS[p.category] || '#7C3AED';
               return (
-                <tr key={p.id} style={isLow ? { background: c.errorBg } : {}}>
+                <tr key={p.id} style={isLow ? { background: 'rgba(220,38,38,.04)' } : {}}>
                   <td style={s.td}>
                     <div style={s.productName}>{p.name}</div>
                     {p.brand && <div style={s.productBrand}>{p.brand}</div>}
                   </td>
-                  <td style={s.td}><span style={{ ...s.catTag, color: CAT_COLORS[p.category] || c.primary, background: (CAT_COLORS[p.category] || c.primary) + '18' }}>{p.category}</span></td>
                   <td style={s.td}>
-                    <span style={{ fontWeight: 700, color: isLow ? c.error : c.success }}>{p.current_stock}</span>
-                    <span style={{ color: c.textMuted, fontSize: 12 }}> {p.unit_of_measure}</span>
-                    {isLow && <div style={{ fontSize: 10, color: c.error, fontWeight: 600, marginTop: 2 }}>LOW STOCK</div>}
+                    <span style={{ ...s.catTag, color: catColor, background: catColor + '18', border: `1px solid ${catColor}30` }}>{p.category}</span>
+                  </td>
+                  <td style={s.td}>
+                    <span style={{ fontWeight: 700, color: isLow ? '#DC2626' : '#059669' }}>{p.current_stock}</span>
+                    <span style={{ color: 'var(--text-muted)', fontSize: 12 }}> {p.unit_of_measure}</span>
+                    {isLow && <div style={{ fontSize: 10, color: '#DC2626', fontWeight: 700, marginTop: 2, letterSpacing: '0.04em' }}>LOW STOCK</div>}
                   </td>
                   <td style={s.td}>{p.reorder_level}</td>
                   <td style={s.td}>LKR {p.cost_price}</td>
-                  <td style={s.td}><span style={{ fontWeight: 700, color: c.primary }}>LKR {p.selling_price}</span></td>
+                  <td style={s.td}><span style={{ fontWeight: 700, color: '#7C3AED' }}>LKR {p.selling_price}</span></td>
                 </tr>
               );
             })}
@@ -121,27 +126,66 @@ export default function OwnerInventory() {
 }
 
 const s = {
-  pageHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, flexWrap: 'wrap', gap: 14 },
-  title: { fontSize: 26, fontWeight: 700, color: c.text, margin: 0, marginBottom: 4 },
-  lowWarn: { color: c.error, fontSize: 13, fontWeight: 500, margin: 0 },
-  headerBtns: { display: 'flex', gap: 10 },
-  outlineBtn: { padding: '9px 18px', border: `1px solid ${c.border}`, borderRadius: 8, textDecoration: 'none', color: c.text, fontSize: 13, fontWeight: 500 },
-  primaryBtn: { padding: '9px 20px', background: c.primary, color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13 },
-  formCard: { background: c.surface, borderRadius: 14, padding: 24, border: `1px solid ${c.border}`, boxShadow: shadow.sm, marginBottom: 24 },
-  formTitle: { fontSize: 16, fontWeight: 700, color: c.text, marginBottom: 16 },
-  alert: { background: c.errorBg, border: `1px solid ${c.errorBorder}`, color: c.error, borderRadius: 8, padding: '10px 14px', fontSize: 13, marginBottom: 14 },
+  pageHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 26, flexWrap: 'wrap', gap: 14 },
+  eyebrow: { fontSize: 10, fontWeight: 700, color: '#A78BFA', letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 6 },
+  title: { fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: 30, fontWeight: 700, color: 'var(--text)', margin: '0 0 4px', letterSpacing: '-0.01em' },
+  lowWarn: { color: '#DC2626', fontSize: 13, fontWeight: 600, margin: 0 },
+  headerBtns: { display: 'flex', gap: 10, flexWrap: 'wrap' },
+  outlineBtn: {
+    padding: '10px 18px', border: '1.5px solid var(--border)', borderRadius: 11,
+    textDecoration: 'none', color: 'var(--text)', fontSize: 13, fontWeight: 600,
+    fontFamily: "'DM Sans', sans-serif",
+  },
+  primaryBtn: {
+    padding: '10px 22px',
+    background: 'linear-gradient(135deg, #7C3AED 0%, #9B59E8 50%, #EC4899 100%)',
+    color: '#fff', border: 'none', borderRadius: 11, cursor: 'pointer',
+    fontWeight: 700, fontSize: 13, boxShadow: '0 6px 18px rgba(124,58,237,.35)',
+    fontFamily: "'DM Sans', sans-serif",
+  },
+  formCard: {
+    background: 'var(--surface)', borderRadius: 20, padding: 26,
+    border: '1px solid var(--border)', boxShadow: '0 4px 24px rgba(124,58,237,.08)',
+    marginBottom: 24,
+  },
+  formTitle: {
+    fontFamily: "'Cormorant Garamond', Georgia, serif",
+    fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 20, letterSpacing: '-0.01em',
+  },
+  alert: {
+    background: '#FEF2F2', border: '1px solid #FCA5A5',
+    color: '#DC2626', borderRadius: 10, padding: '10px 14px', fontSize: 13, marginBottom: 16,
+  },
   form: {},
-  formRow: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12, marginBottom: 16 },
-  formCol: { display: 'flex', flexDirection: 'column' },
-  label: { fontSize: 12, fontWeight: 600, color: c.textSub, marginBottom: 5 },
-  input: { padding: '9px 12px', border: `1px solid ${c.border}`, borderRadius: 7, fontSize: 13 },
-  saveBtn: { padding: '10px 24px', background: c.primary, color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 },
-  tableCard: { background: c.surface, borderRadius: 14, border: `1px solid ${c.border}`, boxShadow: shadow.sm, overflow: 'hidden' },
+  formRow: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 14, marginBottom: 18 },
+  formCol: { display: 'flex', flexDirection: 'column', gap: 5 },
+  label: { fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' },
+  input: {
+    padding: '10px 12px', border: '1.5px solid var(--border)', borderRadius: 10,
+    fontSize: 13, color: 'var(--text)', background: 'var(--input-bg)',
+    fontFamily: "'DM Sans', sans-serif", outline: 'none',
+    width: '100%', boxSizing: 'border-box',
+  },
+  saveBtn: {
+    padding: '11px 28px',
+    background: 'linear-gradient(135deg, #7C3AED 0%, #9B59E8 50%, #EC4899 100%)',
+    color: '#fff', border: 'none', borderRadius: 11, cursor: 'pointer',
+    fontWeight: 700, fontSize: 13, boxShadow: '0 4px 14px rgba(124,58,237,.35)',
+    fontFamily: "'DM Sans', sans-serif",
+  },
+  tableCard: {
+    background: 'var(--surface)', borderRadius: 16, border: '1px solid var(--border)',
+    boxShadow: '0 4px 20px rgba(124,58,237,.06)', overflow: 'hidden',
+  },
   table: { width: '100%', borderCollapse: 'collapse' },
-  th: { padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: c.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', background: c.bg, borderBottom: `2px solid ${c.border}` },
-  td: { padding: '14px 16px', borderBottom: `1px solid ${c.border}`, verticalAlign: 'top' },
-  productName: { fontWeight: 600, fontSize: 14, color: c.text },
-  productBrand: { fontSize: 12, color: c.textMuted, marginTop: 2 },
-  catTag: { display: 'inline-flex', padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600 },
-  empty: { padding: '50px', textAlign: 'center', color: c.textMuted, fontSize: 14 },
+  th: {
+    padding: '12px 16px', textAlign: 'left', fontSize: 10, fontWeight: 700,
+    color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em',
+    background: 'var(--surface2)', borderBottom: '2px solid var(--border)',
+  },
+  td: { padding: '14px 16px', borderBottom: '1px solid var(--border)', verticalAlign: 'top' },
+  productName: { fontWeight: 600, fontSize: 14, color: 'var(--text)' },
+  productBrand: { fontSize: 12, color: 'var(--text-muted)', marginTop: 2 },
+  catTag: { display: 'inline-flex', padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 },
+  empty: { padding: '50px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 },
 };

@@ -3,7 +3,6 @@ import { useParams, Link } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 
-/* ── Static mock / placeholder data ── */
 const MOCK_PHOTOS = [
   { grad: 'linear-gradient(135deg, #7C3AED 0%, #EC4899 100%)', label: 'Styling Area'  },
   { grad: 'linear-gradient(135deg, #1E0A3C 0%, #7C3AED 100%)', label: 'Interior'      },
@@ -50,7 +49,7 @@ function Stars({ rating, size = 14 }) {
   return (
     <span style={{ letterSpacing: 1 }}>
       {[1, 2, 3, 4, 5].map(i => (
-        <span key={i} style={{ color: i <= rating ? '#F59E0B' : 'var(--border)', fontSize: size }}>★</span>
+        <span key={i} style={{ color: i <= rating ? '#BF9B65' : 'var(--border)', fontSize: size }}>★</span>
       ))}
     </span>
   );
@@ -91,7 +90,7 @@ export default function SalonDetail() {
 
   if (!salon) return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh', background: 'var(--bg)' }}>
-      <div style={{ width: 38, height: 38, borderRadius: '50%', border: '3px solid #EDE9FE', borderTopColor: '#7C3AED', animation: 'spinSlow .7s linear infinite' }} />
+      <div style={{ width: 38, height: 38, borderRadius: '50%', border: '3px solid rgba(124,58,237,.15)', borderTopColor: '#7C3AED', animation: 'spinSlow .7s linear infinite' }} />
     </div>
   );
 
@@ -109,7 +108,7 @@ export default function SalonDetail() {
   return (
     <div style={{ background: 'var(--bg)', minHeight: '100vh' }}>
 
-      {/* ━━━━━━ HERO ━━━━━━ */}
+      {/* HERO */}
       <div style={s.hero}>
         <div style={s.heroBg} />
         <div style={s.heroInner}>
@@ -119,7 +118,6 @@ export default function SalonDetail() {
               <div style={s.eyebrow}>Featured Salon</div>
               <h1 style={s.salonName}>{salon.name}</h1>
 
-              {/* Rating */}
               <div style={s.ratingRow}>
                 <Stars rating={summary ? Math.round(summary.average_rating) : 5} size={16} />
                 <span style={s.ratingNum}>{summary ? summary.average_rating.toFixed(1) : '—'}</span>
@@ -131,7 +129,6 @@ export default function SalonDetail() {
                 </span>
               </div>
 
-              {/* Address + map link */}
               <div style={s.addrRow}>
                 <span style={s.addrText}>📍 {fullAddress}</span>
                 <a
@@ -143,7 +140,6 @@ export default function SalonDetail() {
                 </a>
               </div>
 
-              {/* Contacts */}
               <div style={s.contactRow}>
                 {salon.contact_number && <span style={s.contactTag}>📞 {salon.contact_number}</span>}
                 {salon.email && <span style={s.contactTag}>✉ {salon.email}</span>}
@@ -179,7 +175,7 @@ export default function SalonDetail() {
         </div>
       </div>
 
-      {/* ━━━━━━ PHOTOS ━━━━━━ */}
+      {/* PHOTOS */}
       <div style={s.photoStrip}>
         <div style={s.photoScroll}>
           {MOCK_PHOTOS.map((p, i) => (
@@ -190,10 +186,10 @@ export default function SalonDetail() {
         </div>
       </div>
 
-      {/* ━━━━━━ BODY ━━━━━━ */}
+      {/* BODY */}
       <div style={s.body}>
 
-        {/* ── Services ── */}
+        {/* Services */}
         <section style={s.sec} className="fade-up">
           <div style={s.secHead}>
             <div>
@@ -212,7 +208,7 @@ export default function SalonDetail() {
               const cc = CAT_COLORS[cat] || '#7C3AED';
               return (
                 <div key={cat} style={{ marginBottom: 28 }}>
-                  <div style={{ ...s.catBadge, background: cc + '18', color: cc }}>{cat}</div>
+                  <div style={{ ...s.catBadge, background: cc + '14', color: cc, border: `1px solid ${cc}28` }}>{cat}</div>
                   <div style={s.svcGrid}>
                     {items.map(ss => (
                       <div key={ss.id} style={s.svcCard} className="lift-sm">
@@ -224,7 +220,7 @@ export default function SalonDetail() {
                         {isClient && (
                           <Link
                             to={`/user/book/${id}`}
-                            style={{ ...s.svcBookBtn, background: cc + '15', color: cc, borderColor: cc + '35' }}
+                            style={{ ...s.svcBookBtn, background: cc + '12', color: cc, borderColor: cc + '30' }}
                           >
                             Book →
                           </Link>
@@ -238,14 +234,14 @@ export default function SalonDetail() {
           )}
         </section>
 
-        {/* ── Team ── */}
+        {/* Team */}
         <section style={s.sec} className="fade-up d1">
           <div style={s.eyebrowSm}>Meet the Experts</div>
           <h2 style={s.secTitle}>Our Team</h2>
           <div style={s.teamGrid}>
             {MOCK_TEAM.map((m, i) => (
               <div key={i} style={{ ...s.teamCard, borderTop: `3px solid ${m.color}` }} className="lift-sm">
-                <div style={{ ...s.teamAvatar, background: m.bg, color: m.color }}>
+                <div style={{ ...s.teamAvatar, background: m.bg, color: m.color, boxShadow: `0 4px 14px ${m.color}28` }}>
                   {m.name.split(' ').map(w => w[0]).join('')}
                 </div>
                 <div style={s.teamName}>{m.name}</div>
@@ -256,7 +252,7 @@ export default function SalonDetail() {
           </div>
         </section>
 
-        {/* ── Reviews ── */}
+        {/* Reviews */}
         <section style={s.sec} className="fade-up d2">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 14 }}>
             <div>
@@ -265,7 +261,7 @@ export default function SalonDetail() {
             </div>
             {summary && summary.total_reviews > 0 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 48, fontWeight: 800, color: 'var(--text)', lineHeight: 1 }}>{summary.average_rating.toFixed(1)}</div>
+                <div style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: 52, fontWeight: 700, color: 'var(--text)', lineHeight: 1 }}>{summary.average_rating.toFixed(1)}</div>
                 <div>
                   <Stars rating={Math.round(summary.average_rating)} size={16} />
                   <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>Based on {summary.total_reviews} review{summary.total_reviews !== 1 ? 's' : ''}</div>
@@ -296,7 +292,7 @@ export default function SalonDetail() {
           )}
         </section>
 
-        {/* ── Google Map ── */}
+        {/* Google Map */}
         <section style={s.sec} className="fade-up d2">
           <div style={s.eyebrowSm}>Location</div>
           <h2 style={s.secTitle}>Find Us</h2>
@@ -316,7 +312,7 @@ export default function SalonDetail() {
           </div>
         </section>
 
-        {/* ── Hours + Amenities ── */}
+        {/* Hours + Amenities */}
         <section style={s.sec} className="fade-up d3">
           <div style={s.hoursAmenRow}>
             <div style={s.hoursCard}>
@@ -343,7 +339,7 @@ export default function SalonDetail() {
                 {AMENITIES.map(a => (
                   <div key={a.label} style={s.amenItem}>
                     <span style={s.amenIcon}>{a.icon}</span>
-                    <span style={{ fontSize: 13, color: 'var(--text-sub)' }}>{a.label}</span>
+                    <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{a.label}</span>
                   </div>
                 ))}
               </div>
@@ -351,7 +347,7 @@ export default function SalonDetail() {
           </div>
         </section>
 
-        {/* ── Other Salons ── */}
+        {/* Other Salons */}
         {otherSalons.length > 0 && (
           <section style={s.sec} className="fade-up d3">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 20 }}>
@@ -379,7 +375,7 @@ export default function SalonDetail() {
           </section>
         )}
 
-        {/* ── About Us ── */}
+        {/* About Us */}
         <section style={s.sec} className="fade-up d4">
           <div style={s.eyebrowSm}>Our Story</div>
           <h2 style={s.secTitle}>About {salon.name}</h2>
@@ -393,13 +389,13 @@ export default function SalonDetail() {
             </p>
             <div style={s.aboutStats}>
               {[
-                { val: '500+', label: 'Happy Clients'    },
-                { val: '4+',  label: 'Years Experience'  },
-                { val: '15+', label: 'Expert Staff'      },
-                { val: '4.8', label: 'Average Rating'    },
+                { val: '500+', label: 'Happy Clients'   },
+                { val: '4+',  label: 'Years Experience' },
+                { val: '15+', label: 'Expert Staff'     },
+                { val: '4.8', label: 'Average Rating'   },
               ].map(stat => (
                 <div key={stat.label} style={{ textAlign: 'center' }}>
-                  <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 30, fontWeight: 800, color: '#7C3AED', marginBottom: 4 }}>{stat.val}</div>
+                  <div style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: 34, fontWeight: 700, color: '#7C3AED', marginBottom: 4 }}>{stat.val}</div>
                   <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>{stat.label}</div>
                 </div>
               ))}
@@ -407,7 +403,7 @@ export default function SalonDetail() {
           </div>
         </section>
 
-        {/* ── Bottom CTA ── */}
+        {/* Bottom CTA */}
         {isClient && (
           <div style={s.cta} className="fade-up d5">
             <div style={s.ctaGlow} />
@@ -425,9 +421,7 @@ export default function SalonDetail() {
   );
 }
 
-/* ── Styles ── */
 const s = {
-  /* Hero */
   hero: {
     background: 'linear-gradient(135deg, #1E0A3C 0%, #3B0764 40%, #6D28D9 75%, #7C3AED 100%)',
     padding: '52px 48px 44px', position: 'relative', overflow: 'hidden',
@@ -442,18 +436,22 @@ const s = {
     display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end',
     flexWrap: 'wrap', gap: 24,
   },
-  heroLeft:   { display: 'flex', gap: 22, alignItems: 'flex-start', flex: 1 },
+  heroLeft: { display: 'flex', gap: 22, alignItems: 'flex-start', flex: 1 },
   salonInitial: {
     width: 72, height: 72, borderRadius: 20, flexShrink: 0,
     background: 'rgba(255,255,255,.15)', backdropFilter: 'blur(12px)',
     border: '1px solid rgba(255,255,255,.25)',
     color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: 32, fontWeight: 800, boxShadow: '0 8px 24px rgba(0,0,0,.2)',
+    fontFamily: "'Cormorant Garamond', Georgia, serif",
+    fontSize: 34, fontWeight: 700, boxShadow: '0 8px 24px rgba(0,0,0,.2)',
   },
-  eyebrow:   { fontSize: 10, color: 'rgba(196,181,253,.85)', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 8, fontWeight: 600 },
-  salonName: { fontFamily: "'Playfair Display', serif", fontSize: 38, fontWeight: 800, color: '#fff', margin: '0 0 12px', lineHeight: 1.1 },
+  eyebrow: { fontSize: 10, color: 'rgba(196,181,253,.85)', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 8, fontWeight: 700 },
+  salonName: {
+    fontFamily: "'Cormorant Garamond', Georgia, serif",
+    fontSize: 42, fontWeight: 700, color: '#fff', margin: '0 0 12px', lineHeight: 1.1, letterSpacing: '-0.01em',
+  },
   ratingRow: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' },
-  ratingNum: { fontSize: 16, fontWeight: 800, color: '#F59E0B' },
+  ratingNum: { fontSize: 16, fontWeight: 800, color: '#BF9B65' },
   ratingCt:  { fontSize: 13, color: 'rgba(255,255,255,.6)' },
   dot:       { color: 'rgba(255,255,255,.3)', fontSize: 18 },
   openBadge: { fontSize: 12, color: '#F0FFFE', background: 'rgba(52,211,153,.15)', borderRadius: 20, padding: '3px 10px', fontWeight: 600 },
@@ -472,19 +470,16 @@ const s = {
     color: '#fff', borderRadius: 14, fontWeight: 700, fontSize: 16,
     textDecoration: 'none', boxShadow: '0 6px 20px rgba(236,72,153,.45)',
     display: 'inline-flex', alignItems: 'center', gap: 8,
+    fontFamily: "'DM Sans', sans-serif",
   },
 
-  /* Photos */
-  photoStrip: {
-    background: 'var(--surface)', borderBottom: '1px solid var(--border)',
-    padding: '20px 0',
-  },
+  photoStrip: { background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '20px 0' },
   photoScroll: {
     display: 'flex', gap: 14, overflowX: 'auto', paddingBottom: 4,
     maxWidth: 1100, margin: '0 auto', padding: '0 48px 4px',
   },
   photoCard: {
-    width: 210, height: 145, borderRadius: 14, flexShrink: 0,
+    width: 210, height: 145, borderRadius: 16, flexShrink: 0,
     position: 'relative', overflow: 'hidden', cursor: 'pointer',
     boxShadow: '0 4px 14px rgba(0,0,0,.12)',
   },
@@ -495,40 +490,41 @@ const s = {
     backdropFilter: 'blur(4px)',
   },
 
-  /* Body */
   body: { maxWidth: 1100, margin: '0 auto', padding: '44px 48px' },
 
-  /* Section */
-  sec:      { marginBottom: 60 },
-  secHead:  { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 24, flexWrap: 'wrap', gap: 12 },
-  eyebrowSm: { fontSize: 10, fontWeight: 700, color: '#A78BFA', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 6 },
-  secTitle:  { fontFamily: "'Playfair Display', serif", fontSize: 26, fontWeight: 700, color: 'var(--text)', marginBottom: 24 },
+  sec: { marginBottom: 60 },
+  secHead: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 24, flexWrap: 'wrap', gap: 12 },
+  eyebrowSm: { fontSize: 10, fontWeight: 700, color: '#A78BFA', letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 6 },
+  secTitle: {
+    fontFamily: "'Cormorant Garamond', Georgia, serif",
+    fontSize: 28, fontWeight: 700, color: 'var(--text)', marginBottom: 24, letterSpacing: '-0.01em',
+  },
   bookAllBtn: {
-    padding: '9px 20px', background: '#7C3AED', color: '#fff',
-    borderRadius: 10, fontWeight: 600, fontSize: 13, textDecoration: 'none',
-    boxShadow: '0 4px 12px rgba(124,58,237,.3)', flexShrink: 0,
+    padding: '9px 22px',
+    background: 'linear-gradient(135deg, #7C3AED 0%, #9B59E8 50%, #EC4899 100%)',
+    color: '#fff', borderRadius: 11, fontWeight: 700, fontSize: 13,
+    textDecoration: 'none', boxShadow: '0 4px 14px rgba(124,58,237,.3)', flexShrink: 0,
+    fontFamily: "'DM Sans', sans-serif",
   },
 
-  /* Services */
   catBadge: { display: 'inline-flex', padding: '4px 14px', borderRadius: 20, fontSize: 13, fontWeight: 700, marginBottom: 14 },
-  svcGrid:  { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 14 },
-  svcCard:  {
+  svcGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 14 },
+  svcCard: {
     background: 'var(--surface)', borderRadius: 14, padding: '18px 18px 14px',
     border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(0,0,0,.05)',
     display: 'flex', flexDirection: 'column', gap: 8,
   },
-  svcName:    { fontWeight: 600, fontSize: 14, color: 'var(--text)' },
+  svcName:    { fontWeight: 700, fontSize: 14, color: 'var(--text)' },
   svcMeta:    { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
   svcDur:     { fontSize: 12, color: 'var(--text-muted)' },
   svcPrice:   { fontWeight: 700, fontSize: 15 },
   svcBookBtn: {
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    padding: '7px 0', borderRadius: 8, border: '1px solid',
-    fontSize: 13, fontWeight: 700, textDecoration: 'none',
-    marginTop: 4,
+    padding: '7px 0', borderRadius: 9, border: '1px solid',
+    fontSize: 13, fontWeight: 700, textDecoration: 'none', marginTop: 4,
+    fontFamily: "'DM Sans', sans-serif",
   },
 
-  /* Team */
   teamGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 },
   teamCard: {
     background: 'var(--surface)', borderRadius: 16, padding: '26px 20px 22px',
@@ -538,13 +534,13 @@ const s = {
   teamAvatar: {
     width: 58, height: 58, borderRadius: '50%',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: 18, fontWeight: 800, marginBottom: 12,
+    fontFamily: "'Cormorant Garamond', Georgia, serif",
+    fontSize: 20, fontWeight: 700, marginBottom: 12,
   },
   teamName: { fontWeight: 700, fontSize: 15, color: 'var(--text)', marginBottom: 3 },
   teamRole: { fontSize: 12, fontWeight: 600, marginBottom: 4 },
   teamSpec: { fontSize: 12, color: 'var(--text-muted)' },
 
-  /* Reviews */
   reviewGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))', gap: 16 },
   reviewCard: {
     background: 'var(--surface)', borderRadius: 16, padding: '22px 24px',
@@ -555,13 +551,13 @@ const s = {
     width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
     background: 'linear-gradient(135deg, #7C3AED 0%, #EC4899 100%)',
     color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: 16, fontWeight: 700,
+    fontFamily: "'Cormorant Garamond', Georgia, serif",
+    fontSize: 17, fontWeight: 700,
   },
   reviewName: { fontWeight: 700, fontSize: 14, color: 'var(--text)', marginBottom: 2 },
   reviewDate: { fontSize: 11, color: 'var(--text-muted)' },
-  reviewText: { fontSize: 14, color: 'var(--text-sub)', lineHeight: 1.75, fontStyle: 'italic', margin: 0 },
+  reviewText: { fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.75, fontStyle: 'italic', margin: 0 },
 
-  /* Map */
   mapWrap:  { borderRadius: 20, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,.1)', border: '1px solid var(--border)' },
   mapFrame: { width: '100%', height: 420, border: 'none', display: 'block' },
   addrBox:  {
@@ -570,7 +566,6 @@ const s = {
     borderRadius: 12, border: '1px solid var(--border)',
   },
 
-  /* Hours + Amenities */
   hoursAmenRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 },
   hoursCard: {
     background: 'var(--surface)', borderRadius: 18, padding: '26px 28px',
@@ -580,15 +575,17 @@ const s = {
     background: 'var(--surface)', borderRadius: 18, padding: '26px 28px',
     border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(0,0,0,.05)',
   },
-  subTitle: { fontFamily: "'Playfair Display', serif", fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 18 },
+  subTitle: {
+    fontFamily: "'Cormorant Garamond', Georgia, serif",
+    fontSize: 20, fontWeight: 700, color: 'var(--text)', marginBottom: 18, letterSpacing: '-0.01em',
+  },
   hourRow:  { display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderBottom: '1px solid var(--border)' },
-  dayLabel: { fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' },
+  dayLabel: { fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' },
   hoursVal: { fontSize: 13, fontWeight: 600, color: 'var(--text)' },
   amenGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 },
   amenItem: { display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0' },
   amenIcon: { fontSize: 20, width: 28, textAlign: 'center' },
 
-  /* Other salons */
   otherScroll: { display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 8 },
   otherCard: {
     background: 'var(--surface)', borderRadius: 16, padding: '22px 20px 18px',
@@ -599,28 +596,31 @@ const s = {
   otherAvatar: {
     width: 54, height: 54, borderRadius: 14,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: 22, fontWeight: 800, color: '#fff', marginBottom: 4,
+    fontFamily: "'Cormorant Garamond', Georgia, serif",
+    fontSize: 24, fontWeight: 700, color: '#fff', marginBottom: 4,
   },
-  otherName: { fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: 14, color: 'var(--text)' },
+  otherName: {
+    fontFamily: "'Cormorant Garamond', Georgia, serif",
+    fontWeight: 700, fontSize: 15, color: 'var(--text)',
+  },
   otherCity: { fontSize: 12, color: 'var(--text-muted)' },
   seeAllBtn: {
     padding: '8px 18px', fontSize: 13, fontWeight: 600, color: '#7C3AED',
-    background: 'rgba(124,58,237,.1)', borderRadius: 8,
+    background: 'rgba(124,58,237,.1)', borderRadius: 9,
     border: '1px solid rgba(124,58,237,.2)', textDecoration: 'none', flexShrink: 0,
+    fontFamily: "'DM Sans', sans-serif",
   },
 
-  /* About */
   aboutCard: {
     background: 'var(--surface)', borderRadius: 20, padding: '32px 36px',
     border: '1px solid var(--border)', boxShadow: '0 4px 16px rgba(0,0,0,.06)',
   },
-  aboutText:  { fontSize: 15, color: 'var(--text-sub)', lineHeight: 1.85, marginBottom: 16 },
+  aboutText:  { fontSize: 15, color: 'var(--text-muted)', lineHeight: 1.85, marginBottom: 16 },
   aboutStats: {
     display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16,
     marginTop: 24, paddingTop: 24, borderTop: '1px solid var(--border)',
   },
 
-  /* CTA */
   cta: {
     background: 'linear-gradient(135deg, #1E0A3C 0%, #7C3AED 100%)',
     borderRadius: 24, padding: '52px 40px', textAlign: 'center',
@@ -632,9 +632,9 @@ const s = {
     pointerEvents: 'none',
   },
   ctaTitle: {
-    fontFamily: "'Playfair Display', serif",
-    fontSize: 30, fontWeight: 800, color: '#fff', marginBottom: 10,
-    position: 'relative', zIndex: 1,
+    fontFamily: "'Cormorant Garamond', Georgia, serif",
+    fontSize: 34, fontWeight: 700, color: '#fff', marginBottom: 10,
+    position: 'relative', zIndex: 1, letterSpacing: '-0.01em',
   },
   ctaBtn: {
     display: 'inline-flex', alignItems: 'center', gap: 8,
@@ -643,5 +643,6 @@ const s = {
     color: '#fff', borderRadius: 14, fontWeight: 700, fontSize: 16,
     textDecoration: 'none', boxShadow: '0 6px 20px rgba(236,72,153,.45)',
     position: 'relative', zIndex: 1,
+    fontFamily: "'DM Sans', sans-serif",
   },
 };

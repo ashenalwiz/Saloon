@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../../api/axios';
-import { c, shadow, STATUS_META } from '../../styles/theme';
+import { c, STATUS_META } from '../../styles/theme';
 
 export default function OwnerBookingDetail() {
   const { id } = useParams();
@@ -53,7 +53,9 @@ export default function OwnerBookingDetail() {
 
   const setSlot = (i, v) => setSlots(prev => prev.map((s, idx) => idx === i ? v : s));
 
-  if (!booking) return <div style={s.loading}>Loading…</div>;
+  if (!booking) return (
+    <div style={s.loader}><div style={s.loaderSpinner} /></div>
+  );
 
   const meta = STATUS_META[booking.status] || { label: booking.status, color: '#888', bg: '#f0f0f0' };
   const canAct = ['pending', 'rescheduled'].includes(booking.status);
@@ -68,7 +70,7 @@ export default function OwnerBookingDetail() {
           <div style={s.card}>
             <div style={s.cardHead}>
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 5 }}>
                   <h2 style={s.clientName}>{booking.client_name || booking.client_email}</h2>
                   {booking.is_walk_in && (
                     <span style={s.walkInBadge}>Walk-In</span>
@@ -80,11 +82,11 @@ export default function OwnerBookingDetail() {
                   {' · '}Booking #{booking.id}
                 </p>
               </div>
-              <span style={{ ...s.badge, color: meta.color, background: meta.bg, fontSize: 13, padding: '6px 16px' }}>{meta.label}</span>
+              <span style={{ ...s.badge, color: meta.color, background: meta.bg, border: `1px solid ${meta.color}22` }}>{meta.label}</span>
             </div>
 
-            {error && <div style={s.alert}>{error}</div>}
-            {msg && <div style={s.success}>{msg}</div>}
+            {error && <div style={s.alertErr}>{error}</div>}
+            {msg && <div style={s.alertOk}>{msg}</div>}
 
             <div style={s.infoGrid}>
               <div style={s.infoBox}>
@@ -121,7 +123,7 @@ export default function OwnerBookingDetail() {
             {booking.notes && (
               <div style={s.section}>
                 <div style={s.secTitle}>Client Notes</div>
-                <p style={s.notes}>{booking.notes}</p>
+                <p style={s.notes}>"{booking.notes}"</p>
               </div>
             )}
           </div>
@@ -130,7 +132,7 @@ export default function OwnerBookingDetail() {
             <div style={s.actionsCard}>
               <div style={s.confirmSection}>
                 <h4 style={s.actTitle}>Confirm Booking</h4>
-                <p style={{ color: c.textMuted, fontSize: 13, marginBottom: 14 }}>Approve this booking at the requested time.</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 16, lineHeight: 1.6 }}>Approve this booking at the requested time.</p>
                 <button style={s.confirmBtn} onClick={confirm}>✓ Confirm Booking</button>
               </div>
 
@@ -138,7 +140,7 @@ export default function OwnerBookingDetail() {
 
               <div style={s.rejectSection}>
                 <h4 style={s.actTitle}>Reject & Propose Alternatives</h4>
-                <p style={{ color: c.textMuted, fontSize: 13, marginBottom: 14 }}>Propose 3 alternative slots for the client to choose from.</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 16, lineHeight: 1.6 }}>Propose 3 alternative slots for the client to choose from.</p>
                 <div style={s.slotInputs}>
                   {slots.map((sl, i) => (
                     <div key={i} style={s.slotRow}>
@@ -158,7 +160,6 @@ export default function OwnerBookingDetail() {
             <button style={s.cancelBtn} onClick={cancel}>Cancel Booking</button>
           )}
 
-          {/* Assign Stylist */}
           {canAssign && staff.length > 0 && (
             <div style={s.assignCard}>
               <div style={s.secTitle}>Assign Stylist</div>
@@ -182,11 +183,11 @@ export default function OwnerBookingDetail() {
             <div style={s.histCard}>
               <div style={s.secTitle}>Alternative Slot History</div>
               {booking.alternative_slots.map(sl => (
-                <div key={sl.id} style={{ ...s.histSlot, ...(sl.is_selected ? { borderColor: c.success, background: c.successBg } : {}) }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: sl.is_selected ? c.success : c.text }}>
+                <div key={sl.id} style={{ ...s.histSlot, ...(sl.is_selected ? { borderColor: '#059669', background: '#ECFDF5' } : {}) }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: sl.is_selected ? '#059669' : 'var(--text)' }}>
                     Round {sl.round_number}{sl.is_selected ? ' ✓ Selected' : ''}
                   </div>
-                  <div style={{ fontSize: 12, color: c.textMuted, marginTop: 2 }}>{new Date(sl.proposed_datetime).toLocaleString()}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>{new Date(sl.proposed_datetime).toLocaleString()}</div>
                 </div>
               ))}
             </div>
@@ -199,57 +200,148 @@ export default function OwnerBookingDetail() {
 
 const s = {
   page: {},
-  loading: { padding: 60, textAlign: 'center', color: c.textMuted },
-  back: { display: 'inline-block', marginBottom: 20, color: c.primary, textDecoration: 'none', fontWeight: 500, fontSize: 14 },
+  loader: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 },
+  loaderSpinner: {
+    width: 32, height: 32, borderRadius: '50%',
+    border: '3px solid rgba(124,58,237,.15)', borderTopColor: '#7C3AED',
+    animation: 'spinSlow .7s linear infinite',
+  },
+  back: {
+    display: 'inline-block', marginBottom: 22, color: '#7C3AED',
+    textDecoration: 'none', fontWeight: 600, fontSize: 13,
+  },
   layout: { display: 'flex', gap: 24, alignItems: 'flex-start' },
   mainCol: { flex: 1, display: 'flex', flexDirection: 'column', gap: 16 },
-  sideCol: { width: 240, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 14 },
-  card: { background: c.surface, borderRadius: 16, padding: 28, boxShadow: shadow.md, border: `1px solid ${c.border}` },
-  cardHead: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, paddingBottom: 20, borderBottom: `1px solid ${c.border}` },
-  clientName: { fontSize: 20, fontWeight: 700, color: c.text, margin: 0 },
+  sideCol: { width: 248, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 14 },
+
+  card: {
+    background: 'var(--surface)', borderRadius: 22, padding: 28,
+    boxShadow: '0 8px 32px rgba(124,58,237,.08)',
+    border: '1px solid var(--border)',
+  },
+  cardHead: {
+    display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+    marginBottom: 24, paddingBottom: 20, borderBottom: '1px solid var(--border)',
+  },
+  clientName: {
+    fontFamily: "'Cormorant Garamond', Georgia, serif",
+    fontSize: 22, fontWeight: 700, color: 'var(--text)', margin: 0, letterSpacing: '-0.01em',
+  },
   walkInBadge: {
     fontSize: 10, fontWeight: 700, padding: '3px 9px', borderRadius: 20,
     background: '#DBEAFE', color: '#1D4ED8', border: '1px solid #BFDBFE',
     flexShrink: 0,
   },
-  bookingId: { color: c.textMuted, fontSize: 12, margin: '4px 0 0' },
-  badge: { display: 'inline-flex', borderRadius: 20, fontWeight: 700, flexShrink: 0 },
-  alert: { background: c.errorBg, border: `1px solid ${c.errorBorder}`, color: c.error, borderRadius: 8, padding: '10px 14px', fontSize: 13, marginBottom: 16 },
-  success: { background: c.successBg, border: `1px solid ${c.successBorder}`, color: c.success, borderRadius: 8, padding: '10px 14px', fontSize: 13, marginBottom: 16 },
-  infoGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 },
-  infoBox: { background: c.bg, borderRadius: 8, padding: '12px 14px' },
-  infoLbl: { fontSize: 11, fontWeight: 600, color: c.textLight, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 },
-  infoVal: { fontSize: 14, fontWeight: 600, color: c.text },
-  section: { marginBottom: 16 },
-  secTitle: { fontSize: 11, fontWeight: 700, color: c.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 },
+  bookingId: { color: 'var(--text-muted)', fontSize: 12, margin: '4px 0 0', lineHeight: 1.6 },
+  badge: {
+    display: 'inline-flex', borderRadius: 20, fontWeight: 700, flexShrink: 0,
+    fontSize: 13, padding: '6px 16px',
+  },
+  alertErr: {
+    background: '#FEF2F2', border: '1px solid #FCA5A5',
+    color: '#DC2626', borderRadius: 12, padding: '11px 14px', fontSize: 13, marginBottom: 18,
+  },
+  alertOk: {
+    background: '#ECFDF5', border: '1px solid #6EE7B7',
+    color: '#059669', borderRadius: 12, padding: '11px 14px', fontSize: 13, marginBottom: 18,
+  },
+  infoGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 22 },
+  infoBox: {
+    background: 'var(--surface2)', borderRadius: 12, padding: '13px 16px',
+    border: '1px solid var(--border)',
+  },
+  infoLbl: {
+    fontSize: 9, fontWeight: 700, color: 'var(--text-muted)',
+    textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6,
+  },
+  infoVal: { fontSize: 14, fontWeight: 600, color: 'var(--text)' },
+  section: { marginBottom: 18 },
+  secTitle: {
+    fontSize: 9, fontWeight: 700, color: 'var(--text-muted)',
+    textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10,
+  },
   chips: { display: 'flex', flexWrap: 'wrap', gap: 8 },
-  chip: { padding: '5px 12px', background: c.primarySoft, color: c.primary, borderRadius: 20, fontSize: 13, fontWeight: 500 },
-  notes: { fontSize: 14, color: c.textSub, background: c.bg, borderRadius: 8, padding: '10px 14px', margin: 0 },
-  actionsCard: { background: c.surface, borderRadius: 16, padding: 24, boxShadow: shadow.md, border: `1px solid ${c.border}` },
+  chip: {
+    padding: '6px 14px', background: 'rgba(124,58,237,.08)', color: '#7C3AED',
+    borderRadius: 20, fontSize: 13, fontWeight: 500, border: '1px solid rgba(124,58,237,.18)',
+  },
+  notes: {
+    fontSize: 14, color: 'var(--text-sub)', fontStyle: 'italic',
+    background: 'var(--surface2)', borderRadius: 12, padding: '12px 16px',
+    margin: 0, lineHeight: 1.6, border: '1px solid var(--border)',
+  },
+
+  actionsCard: {
+    background: 'var(--surface)', borderRadius: 22, padding: 26,
+    boxShadow: '0 4px 20px rgba(124,58,237,.07)',
+    border: '1px solid var(--border)',
+  },
   confirmSection: { marginBottom: 20 },
-  actTitle: { fontSize: 15, fontWeight: 700, color: c.text, marginBottom: 6 },
-  confirmBtn: { padding: '11px 24px', background: c.success, color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontWeight: 700, fontSize: 14 },
-  divider: { height: 1, background: c.border, margin: '20px 0' },
+  actTitle: {
+    fontFamily: "'Cormorant Garamond', Georgia, serif",
+    fontSize: 17, fontWeight: 700, color: 'var(--text)', marginBottom: 6, letterSpacing: '-0.01em',
+  },
+  confirmBtn: {
+    padding: '11px 26px',
+    background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+    color: '#fff', border: 'none', borderRadius: 12, cursor: 'pointer',
+    fontWeight: 700, fontSize: 14, boxShadow: '0 4px 14px rgba(5,150,105,.3)',
+    fontFamily: "'DM Sans', sans-serif",
+  },
+  divider: { height: 1, background: 'var(--border)', margin: '20px 0' },
   rejectSection: {},
-  slotInputs: { display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 },
+  slotInputs: { display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 },
   slotRow: { display: 'flex', alignItems: 'center', gap: 10 },
-  slotLabel: { fontSize: 12, fontWeight: 600, color: c.textMuted, width: 54, flexShrink: 0 },
-  dateInput: { flex: 1, padding: '8px 12px', border: `1px solid ${c.border}`, borderRadius: 8, fontSize: 13, background: 'var(--input-bg)', color: 'var(--text)' },
-  rejectBtn: { padding: '11px 24px', background: c.errorBg, color: c.error, border: `1px solid ${c.errorBorder}`, borderRadius: 10, cursor: 'pointer', fontWeight: 700, fontSize: 14 },
-  cancelBtn: { width: '100%', padding: '10px', background: 'transparent', color: c.textMuted, border: `1px solid ${c.border}`, borderRadius: 10, cursor: 'pointer', fontWeight: 600, fontSize: 13 },
+  slotLabel: {
+    fontSize: 12, fontWeight: 600, color: 'var(--text-muted)',
+    width: 60, flexShrink: 0,
+  },
+  dateInput: {
+    flex: 1, padding: '9px 12px', border: '1.5px solid var(--border)', borderRadius: 10,
+    fontSize: 13, background: 'var(--input-bg)', color: 'var(--text)', outline: 'none',
+    fontFamily: "'DM Sans', sans-serif",
+  },
+  rejectBtn: {
+    padding: '11px 24px',
+    background: '#FEF2F2', color: '#DC2626',
+    border: '1px solid #FECACA', borderRadius: 12, cursor: 'pointer',
+    fontWeight: 700, fontSize: 14,
+    fontFamily: "'DM Sans', sans-serif",
+  },
+
+  cancelBtn: {
+    width: '100%', padding: '11px',
+    background: 'transparent', color: 'var(--text-muted)',
+    border: '1.5px solid var(--border)', borderRadius: 12,
+    cursor: 'pointer', fontWeight: 600, fontSize: 13,
+    fontFamily: "'DM Sans', sans-serif",
+  },
   assignCard: {
-    background: c.surface, borderRadius: 12, padding: 16, border: `1px solid ${c.border}`,
-    boxShadow: shadow.sm, display: 'flex', flexDirection: 'column', gap: 10,
+    background: 'var(--surface)', borderRadius: 16, padding: 18,
+    border: '1px solid var(--border)',
+    boxShadow: '0 2px 10px rgba(124,58,237,.06)',
+    display: 'flex', flexDirection: 'column', gap: 10,
   },
   select: {
-    width: '100%', padding: '9px 12px', border: `1px solid ${c.border}`, borderRadius: 8,
-    fontSize: 13, background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'inherit',
+    width: '100%', padding: '10px 12px', border: '1.5px solid var(--border)', borderRadius: 10,
+    fontSize: 13, background: 'var(--input-bg)', color: 'var(--text)',
+    fontFamily: "'DM Sans', sans-serif", outline: 'none',
   },
   assignBtn: {
-    padding: '9px 16px', background: 'linear-gradient(135deg, #7C3AED, #6D28D9)',
-    color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer',
-    fontWeight: 700, fontSize: 13, boxShadow: '0 3px 10px rgba(124,58,237,.25)',
+    padding: '10px 16px',
+    background: 'linear-gradient(135deg, #7C3AED 0%, #9B59E8 50%, #EC4899 100%)',
+    color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer',
+    fontWeight: 700, fontSize: 13,
+    boxShadow: '0 4px 12px rgba(124,58,237,.3)',
+    fontFamily: "'DM Sans', sans-serif",
   },
-  histCard: { background: c.surface, borderRadius: 12, padding: 16, border: `1px solid ${c.border}`, boxShadow: shadow.sm },
-  histSlot: { border: `1px solid ${c.border}`, borderRadius: 8, padding: '8px 12px', marginBottom: 6 },
+  histCard: {
+    background: 'var(--surface)', borderRadius: 16, padding: 18,
+    border: '1px solid var(--border)',
+    boxShadow: '0 2px 10px rgba(124,58,237,.05)',
+  },
+  histSlot: {
+    border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', marginBottom: 8,
+    transition: 'border-color .2s ease, background .2s ease',
+  },
 };
