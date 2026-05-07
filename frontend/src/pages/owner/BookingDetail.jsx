@@ -9,8 +9,18 @@ export default function OwnerBookingDetail() {
   const [error, setError] = useState('');
   const [msg, setMsg] = useState('');
   const [slots, setSlots] = useState(['', '', '']);
+  const [staff, setStaff] = useState([]);
+  const [assignId, setAssignId] = useState('');
+  const [assigning, setAssigning] = useState(false);
 
-  const load = () => api.get(`/bookings/${id}/`).then(r => setBooking(r.data)).catch(() => {});
+  const load = () => api.get(`/bookings/${id}/`).then(r => {
+    setBooking(r.data);
+    setAssignId(r.data.staff_member ?? '');
+    if (r.data.salon) {
+      api.get(`/salons/${r.data.salon}/staff/`).then(sr => setStaff(sr.data)).catch(() => {});
+    }
+  }).catch(() => {});
+
   useEffect(() => { load(); }, [id]);
 
   const confirm = async () => {
@@ -22,8 +32,7 @@ export default function OwnerBookingDetail() {
     if (slots.some(s => !s)) return setError('All 3 alternative slots are required');
     try {
       await api.post(`/bookings/${id}/reject/`, { proposed_slots: slots });
-      setMsg('Booking rejected with 3 alternative slots proposed.');
-      load();
+      setMsg('Booking rejected with 3 alternative slots proposed.'); load();
     } catch (err) { setError(err.response?.data?.detail || JSON.stringify(err.response?.data) || 'Error'); }
   };
 
@@ -33,12 +42,22 @@ export default function OwnerBookingDetail() {
     catch (err) { setError(err.response?.data?.detail || 'Error'); }
   };
 
+  const assignStaff = async () => {
+    setAssigning(true);
+    try {
+      await api.patch(`/bookings/${id}/assign-staff/`, { staff_id: assignId || null });
+      setMsg('Stylist assigned successfully.'); load();
+    } catch (err) { setError(err.response?.data?.detail || 'Error assigning staff'); }
+    finally { setAssigning(false); }
+  };
+
   const setSlot = (i, v) => setSlots(prev => prev.map((s, idx) => idx === i ? v : s));
 
   if (!booking) return <div style={s.loading}>Loading…</div>;
 
   const meta = STATUS_META[booking.status] || { label: booking.status, color: '#888', bg: '#f0f0f0' };
   const canAct = ['pending', 'rescheduled'].includes(booking.status);
+  const canAssign = ['pending', 'confirmed', 'rescheduled'].includes(booking.status);
 
   return (
     <div style={s.page}>
@@ -49,8 +68,17 @@ export default function OwnerBookingDetail() {
           <div style={s.card}>
             <div style={s.cardHead}>
               <div>
-                <h2 style={s.clientName}>{booking.client_email}</h2>
-                <p style={s.bookingId}>Booking #{booking.id}</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                  <h2 style={s.clientName}>{booking.client_name || booking.client_email}</h2>
+                  {booking.is_walk_in && (
+                    <span style={s.walkInBadge}>Walk-In</span>
+                  )}
+                </div>
+                <p style={s.bookingId}>
+                  {booking.client_email}
+                  {booking.client_phone && ` · ${booking.client_phone}`}
+                  {' · '}Booking #{booking.id}
+                </p>
               </div>
               <span style={{ ...s.badge, color: meta.color, background: meta.bg, fontSize: 13, padding: '6px 16px' }}>{meta.label}</span>
             </div>
@@ -59,14 +87,34 @@ export default function OwnerBookingDetail() {
             {msg && <div style={s.success}>{msg}</div>}
 
             <div style={s.infoGrid}>
-              <div style={s.infoBox}><div style={s.infoLbl}>Date & Time</div><div style={s.infoVal}>{new Date(booking.requested_datetime).toLocaleString()}</div></div>
-              <div style={s.infoBox}><div style={s.infoLbl}>Negotiation Round</div><div style={s.infoVal}>{booking.negotiation_round} / 5</div></div>
+              <div style={s.infoBox}>
+                <div style={s.infoLbl}>Date & Time</div>
+                <div style={s.infoVal}>{new Date(booking.requested_datetime).toLocaleString()}</div>
+              </div>
+              <div style={s.infoBox}>
+                <div style={s.infoLbl}>Negotiation Round</div>
+                <div style={s.infoVal}>{booking.negotiation_round} / 5</div>
+              </div>
+              {booking.staff_member_name && (
+                <div style={s.infoBox}>
+                  <div style={s.infoLbl}>Assigned Stylist</div>
+                  <div style={s.infoVal}>★ {booking.staff_member_name}</div>
+                </div>
+              )}
+              {booking.discount_amount > 0 && (
+                <div style={s.infoBox}>
+                  <div style={s.infoLbl}>Discount Applied</div>
+                  <div style={{ ...s.infoVal, color: '#059669' }}>− LKR {Number(booking.discount_amount).toFixed(2)}</div>
+                </div>
+              )}
             </div>
 
             {booking.booking_services?.length > 0 && (
               <div style={s.section}>
                 <div style={s.secTitle}>Services Requested</div>
-                <div style={s.chips}>{booking.booking_services.map(bs => <span key={bs.id} style={s.chip}>{bs.service_name}</span>)}</div>
+                <div style={s.chips}>
+                  {booking.booking_services.map(bs => <span key={bs.id} style={s.chip}>{bs.service_name}</span>)}
+                </div>
               </div>
             )}
 
@@ -109,12 +157,35 @@ export default function OwnerBookingDetail() {
           {!['cancelled','completed'].includes(booking.status) && (
             <button style={s.cancelBtn} onClick={cancel}>Cancel Booking</button>
           )}
+
+          {/* Assign Stylist */}
+          {canAssign && staff.length > 0 && (
+            <div style={s.assignCard}>
+              <div style={s.secTitle}>Assign Stylist</div>
+              <select style={s.select} value={assignId} onChange={e => setAssignId(e.target.value)}>
+                <option value="">Any Available</option>
+                {staff.map(m => (
+                  <option key={m.id} value={m.id}>{m.full_name}{m.role ? ` — ${m.role}` : ''}</option>
+                ))}
+              </select>
+              <button
+                style={{ ...s.assignBtn, opacity: assigning ? 0.7 : 1 }}
+                onClick={assignStaff}
+                disabled={assigning}
+              >
+                {assigning ? 'Saving…' : '★ Assign'}
+              </button>
+            </div>
+          )}
+
           {booking.alternative_slots?.length > 0 && (
             <div style={s.histCard}>
               <div style={s.secTitle}>Alternative Slot History</div>
               {booking.alternative_slots.map(sl => (
                 <div key={sl.id} style={{ ...s.histSlot, ...(sl.is_selected ? { borderColor: c.success, background: c.successBg } : {}) }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: sl.is_selected ? c.success : c.text }}>Round {sl.round_number}{sl.is_selected ? ' ✓ Selected' : ''}</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: sl.is_selected ? c.success : c.text }}>
+                    Round {sl.round_number}{sl.is_selected ? ' ✓ Selected' : ''}
+                  </div>
                   <div style={{ fontSize: 12, color: c.textMuted, marginTop: 2 }}>{new Date(sl.proposed_datetime).toLocaleString()}</div>
                 </div>
               ))}
@@ -135,8 +206,13 @@ const s = {
   sideCol: { width: 240, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 14 },
   card: { background: c.surface, borderRadius: 16, padding: 28, boxShadow: shadow.md, border: `1px solid ${c.border}` },
   cardHead: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, paddingBottom: 20, borderBottom: `1px solid ${c.border}` },
-  clientName: { fontSize: 20, fontWeight: 700, color: c.text, margin: 0, marginBottom: 4 },
-  bookingId: { color: c.textMuted, fontSize: 13, margin: 0 },
+  clientName: { fontSize: 20, fontWeight: 700, color: c.text, margin: 0 },
+  walkInBadge: {
+    fontSize: 10, fontWeight: 700, padding: '3px 9px', borderRadius: 20,
+    background: '#DBEAFE', color: '#1D4ED8', border: '1px solid #BFDBFE',
+    flexShrink: 0,
+  },
+  bookingId: { color: c.textMuted, fontSize: 12, margin: '4px 0 0' },
   badge: { display: 'inline-flex', borderRadius: 20, fontWeight: 700, flexShrink: 0 },
   alert: { background: c.errorBg, border: `1px solid ${c.errorBorder}`, color: c.error, borderRadius: 8, padding: '10px 14px', fontSize: 13, marginBottom: 16 },
   success: { background: c.successBg, border: `1px solid ${c.successBorder}`, color: c.success, borderRadius: 8, padding: '10px 14px', fontSize: 13, marginBottom: 16 },
@@ -158,9 +234,22 @@ const s = {
   slotInputs: { display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 },
   slotRow: { display: 'flex', alignItems: 'center', gap: 10 },
   slotLabel: { fontSize: 12, fontWeight: 600, color: c.textMuted, width: 54, flexShrink: 0 },
-  dateInput: { flex: 1, padding: '8px 12px', border: `1px solid ${c.border}`, borderRadius: 8, fontSize: 13 },
+  dateInput: { flex: 1, padding: '8px 12px', border: `1px solid ${c.border}`, borderRadius: 8, fontSize: 13, background: 'var(--input-bg)', color: 'var(--text)' },
   rejectBtn: { padding: '11px 24px', background: c.errorBg, color: c.error, border: `1px solid ${c.errorBorder}`, borderRadius: 10, cursor: 'pointer', fontWeight: 700, fontSize: 14 },
   cancelBtn: { width: '100%', padding: '10px', background: 'transparent', color: c.textMuted, border: `1px solid ${c.border}`, borderRadius: 10, cursor: 'pointer', fontWeight: 600, fontSize: 13 },
+  assignCard: {
+    background: c.surface, borderRadius: 12, padding: 16, border: `1px solid ${c.border}`,
+    boxShadow: shadow.sm, display: 'flex', flexDirection: 'column', gap: 10,
+  },
+  select: {
+    width: '100%', padding: '9px 12px', border: `1px solid ${c.border}`, borderRadius: 8,
+    fontSize: 13, background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'inherit',
+  },
+  assignBtn: {
+    padding: '9px 16px', background: 'linear-gradient(135deg, #7C3AED, #6D28D9)',
+    color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer',
+    fontWeight: 700, fontSize: 13, boxShadow: '0 3px 10px rgba(124,58,237,.25)',
+  },
   histCard: { background: c.surface, borderRadius: 12, padding: 16, border: `1px solid ${c.border}`, boxShadow: shadow.sm },
   histSlot: { border: `1px solid ${c.border}`, borderRadius: 8, padding: '8px 12px', marginBottom: 6 },
 };

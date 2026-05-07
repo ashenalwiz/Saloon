@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import api from '../../api/axios';
 import { c } from '../../styles/theme';
 
@@ -126,12 +126,14 @@ const STEPS = ['Services', 'Professional', 'Date', 'Time', 'Confirm'];
 export default function BookSalon() {
   const { salonId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const preIds = (searchParams.get('services') || '').split(',').map(Number).filter(Boolean);
   const [salon, setSalon] = useState(null);
   const [services, setServices] = useState([]);
-  const [selected, setSelected] = useState([]);
+  const [selected, setSelected] = useState(preIds);
   const [staffList, setStaffList] = useState([]);
   const [staffLoading, setStaffLoading] = useState(true);
-  const [staffId, setStaffId] = useState(null); // null = any available
+  const [staffId, setStaffId] = useState(null);
   const [date, setDate] = useState('');
   const [slots, setSlots] = useState([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
@@ -139,7 +141,11 @@ export default function BookSalon() {
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(preIds.length > 0 ? 1 : 0);
+  const [promoCode, setPromoCode] = useState('');
+  const [promoOpen, setPromoOpen] = useState(false);
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoResult, setPromoResult] = useState(null);
 
   useEffect(() => {
     api.get(`/salons/${salonId}/`).then(r => setSalon(r.data)).catch(() => {});
@@ -161,7 +167,20 @@ export default function BookSalon() {
       .finally(() => setSlotsLoading(false));
   }, [date, salonId, staffId]);
 
+  useEffect(() => { setPromoResult(null); }, [selected]);
+
   const toggleService = id => setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+
+  const applyPromo = async () => {
+    if (!promoCode.trim()) return;
+    setPromoLoading(true); setPromoResult(null);
+    try {
+      const r = await api.post('/promotions/validate/', { code: promoCode.trim(), salon_id: Number(salonId) });
+      setPromoResult(r.data);
+    } catch (err) {
+      setPromoResult({ valid: false, message: err.response?.data?.message || err.response?.data?.detail || 'Invalid promo code' });
+    } finally { setPromoLoading(false); }
+  };
 
   const submit = async e => {
     e.preventDefault(); setError('');
@@ -175,6 +194,7 @@ export default function BookSalon() {
         salon_service_ids: selected,
         notes,
         ...(staffId !== null ? { staff_member_id: staffId } : {}),
+        ...(promoResult?.valid ? { promo_id: promoResult.promo_id } : {}),
       };
       await api.post('/bookings/', payload);
       navigate('/user/bookings');
@@ -189,6 +209,8 @@ export default function BookSalon() {
 
   const selectedServices = services.filter(ss => selected.includes(ss.id));
   const total = selectedServices.reduce((sum, ss) => sum + Number(ss.effective_price), 0);
+  const discount = promoResult?.valid ? Number(promoResult.discount_amount) : 0;
+  const finalTotal = Math.max(0, total - discount);
   const selectedStaffName = staffId === null ? 'Any Available' : staffList.find(m => m.id === staffId)?.full_name || '';
 
   // step 1 (Professional) is always "done" — any available is a valid default
@@ -264,6 +286,46 @@ export default function BookSalon() {
                 })}
                 {services.length === 0 && <p style={{ color: c.textMuted }}>No services available at this salon.</p>}
               </div>
+
+              {selected.length > 0 && (
+                <div style={s.promoSection}>
+                  <button style={s.promoToggle} type="button" onClick={() => setPromoOpen(o => !o)}>
+                    <span>🏷 Have a promo code?</span>
+                    <span style={{ fontSize: 10 }}>{promoOpen ? '▲' : '▼'}</span>
+                  </button>
+                  {promoOpen && (
+                    <div style={s.promoBody}>
+                      <div style={s.promoRow}>
+                        <input
+                          style={s.promoInput}
+                          value={promoCode}
+                          onChange={e => { setPromoCode(e.target.value.toUpperCase()); setPromoResult(null); }}
+                          placeholder="Enter promo code"
+                          onKeyDown={e => e.key === 'Enter' && applyPromo()}
+                        />
+                        <button
+                          type="button"
+                          style={{ ...s.promoApplyBtn, opacity: promoLoading || !promoCode.trim() ? 0.6 : 1 }}
+                          onClick={applyPromo}
+                          disabled={promoLoading || !promoCode.trim()}
+                        >
+                          {promoLoading ? '…' : 'Apply'}
+                        </button>
+                      </div>
+                      {promoResult && (
+                        <div style={{
+                          ...s.promoMsg,
+                          color: promoResult.valid ? '#059669' : '#DC2626',
+                          background: promoResult.valid ? '#ECFDF5' : '#FEF2F2',
+                          border: `1px solid ${promoResult.valid ? '#6EE7B7' : '#FCA5A5'}`,
+                        }}>
+                          {promoResult.message}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -472,10 +534,18 @@ export default function BookSalon() {
             )}
 
             {selectedServices.length > 0 && (
-              <div style={s.sumTotal}>
-                <span style={{ fontWeight: 600 }}>Total</span>
-                <span style={s.sumTotalVal}>LKR {total.toFixed(2)}</span>
-              </div>
+              <>
+                {promoResult?.valid && (
+                  <div style={s.sumRow}>
+                    <span style={{ ...s.sumName, color: '#059669' }}>🏷 Promo discount</span>
+                    <span style={{ fontWeight: 600, color: '#059669', flexShrink: 0, marginLeft: 8 }}>− LKR {discount.toFixed(2)}</span>
+                  </div>
+                )}
+                <div style={s.sumTotal}>
+                  <span style={{ fontWeight: 600 }}>Total</span>
+                  <span style={s.sumTotalVal}>LKR {finalTotal.toFixed(2)}</span>
+                </div>
+              </>
             )}
 
             {selectedStaffName && (
@@ -705,4 +775,26 @@ const s = {
   sumDetailIcon: { color: c.primary, fontSize: 14 },
   checklist: { marginTop: 16, display: 'flex', flexDirection: 'column', gap: 5 },
   checkItem: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 500, transition: 'color .3s ease' },
+
+  promoSection: { marginTop: 18, borderTop: '1px solid var(--border)', paddingTop: 14 },
+  promoToggle: {
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    width: '100%', background: 'none', border: 'none', cursor: 'pointer',
+    fontSize: 13, fontWeight: 600, color: c.primary, padding: 0,
+  },
+  promoBody: { marginTop: 12 },
+  promoRow: { display: 'flex', gap: 8 },
+  promoInput: {
+    flex: 1, padding: '9px 14px',
+    border: '1.5px solid var(--border)', borderRadius: 10,
+    fontSize: 13, fontFamily: 'inherit', background: 'var(--input-bg)', color: 'var(--text)',
+    textTransform: 'uppercase', letterSpacing: '0.05em',
+  },
+  promoApplyBtn: {
+    padding: '9px 18px',
+    background: 'linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)',
+    color: '#fff', border: 'none', borderRadius: 10,
+    cursor: 'pointer', fontWeight: 700, fontSize: 13,
+  },
+  promoMsg: { marginTop: 8, padding: '8px 12px', borderRadius: 8, fontSize: 12, fontWeight: 500 },
 };

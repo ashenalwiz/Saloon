@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import CustomUser
+from .models import CustomUser, Notification
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -23,3 +23,10 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = ['id', 'email', 'full_name', 'phone', 'role']
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ['id', 'message', 'notif_type', 'is_read', 'booking_id', 'created_at']
+        read_only_fields = ['id', 'message', 'notif_type', 'booking_id', 'created_at']

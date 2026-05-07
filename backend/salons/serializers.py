@@ -4,10 +4,25 @@ from users.models import CustomUser
 
 
 class SalonStaffSerializer(serializers.ModelSerializer):
+    specialty_ids = serializers.PrimaryKeyRelatedField(
+        source='specialties', many=True, read_only=True
+    )
+    specialty_names = serializers.SerializerMethodField()
+
+    def get_specialty_names(self, obj):
+        return [s.name for s in obj.specialties.all()]
+
     class Meta:
         model = SalonStaff
-        fields = ['id', 'salon', 'full_name', 'role', 'phone', 'is_active', 'created_at']
-        read_only_fields = ['id', 'salon', 'created_at']
+        fields = [
+            'id', 'salon', 'full_name', 'role', 'phone',
+            'specialties', 'specialty_ids', 'specialty_names',
+            'working_days', 'is_active', 'created_at',
+        ]
+        read_only_fields = ['id', 'salon', 'created_at', 'specialty_ids', 'specialty_names']
+        extra_kwargs = {
+            'specialties': {'write_only': True, 'required': False},
+        }
 
 
 class SalonCalendarSerializer(serializers.ModelSerializer):
@@ -50,7 +65,6 @@ class SalonRegisterSerializer(serializers.ModelSerializer):
         owner_data = validated_data.pop('owner', {})
         password = validated_data.pop('password', None)
 
-        # If request user is already authenticated as salon_owner, use them
         request = self.context.get('request')
         if request and request.user.is_authenticated and request.user.role == 'salon_owner':
             owner = request.user

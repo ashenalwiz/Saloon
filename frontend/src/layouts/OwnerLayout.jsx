@@ -1,14 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useOwner } from '../context/OwnerContext';
 import { useTheme } from '../context/ThemeContext';
+import api from '../api/axios';
 
 const NAV = [
   { to: '/owner/dashboard',             icon: '◈', label: 'Dashboard',     group: 'main'  },
   { to: '/owner/bookings',              icon: '◉', label: 'Bookings',      group: 'main'  },
   { to: '/owner/services',              icon: '◇', label: 'Services',      group: 'main'  },
   { to: '/owner/team',                  icon: '✦', label: 'Team',          group: 'main'  },
+  { to: '/owner/promotions',            icon: '⬡', label: 'Promotions',    group: 'main'  },
+  { to: '/owner/analytics',             icon: '◱', label: 'Analytics',     group: 'main'  },
   { to: '/owner/inventory',             icon: '▦', label: 'Products',      group: 'stock' },
   { to: '/owner/inventory/grn',         icon: '⊕', label: 'Receive Stock', group: 'stock' },
   { to: '/owner/inventory/sales',       icon: '⊘', label: 'Record Sales',  group: 'stock' },
@@ -27,6 +30,36 @@ export default function OwnerLayout() {
   const { isDark, toggle } = useTheme();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifs, setNotifs] = useState([]);
+  const [showNotifs, setShowNotifs] = useState(false);
+  const bellRef = useRef(null);
+
+  useEffect(() => {
+    const fetchCount = () => api.get('/users/notifications/unread-count/').then(r => setUnreadCount(r.data.count)).catch(() => {});
+    fetchCount();
+    const iv = setInterval(fetchCount, 30000);
+    return () => clearInterval(iv);
+  }, []);
+
+  const openNotifs = () => {
+    if (!showNotifs) {
+      api.get('/users/notifications/').then(r => setNotifs(r.data)).catch(() => {});
+    }
+    setShowNotifs(v => !v);
+  };
+
+  const markAllRead = async () => {
+    await api.post('/users/notifications/mark-read/').catch(() => {});
+    setNotifs(prev => prev.map(n => ({ ...n, is_read: true })));
+    setUnreadCount(0);
+  };
+
+  useEffect(() => {
+    const handler = e => { if (bellRef.current && !bellRef.current.contains(e.target)) setShowNotifs(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const handleLogout = () => { logout(); navigate('/login'); };
   const initials = (profile?.full_name || 'O').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
@@ -43,15 +76,47 @@ export default function OwnerLayout() {
               <div style={s.brandSub}>Owner Portal</div>
             </div>
           )}
-          {/* Theme toggle */}
+          {/* Notification bell + theme toggle */}
           {!collapsed && (
-            <button
-              onClick={toggle}
-              title={isDark ? 'Light mode' : 'Dark mode'}
-              style={s.sideToggle}
-            >
-              {isDark ? '☀' : '☾'}
-            </button>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <div ref={bellRef} style={{ position: 'relative' }}>
+                <button onClick={openNotifs} style={s.sideToggle} title="Notifications">
+                  🔔
+                  {unreadCount > 0 && (
+                    <span style={s.bellBadge}>{unreadCount > 9 ? '9+' : unreadCount}</span>
+                  )}
+                </button>
+                {showNotifs && (
+                  <div style={s.notifDropdown}>
+                    <div style={s.notifHeader}>
+                      <span style={s.notifTitle}>Notifications</span>
+                      {unreadCount > 0 && (
+                        <button style={s.markReadBtn} onClick={markAllRead}>Mark all read</button>
+                      )}
+                    </div>
+                    <div style={s.notifList}>
+                      {notifs.length === 0 && <div style={s.notifEmpty}>No notifications</div>}
+                      {notifs.slice(0, 10).map(n => (
+                        <div key={n.id} style={{ ...s.notifItem, ...(n.is_read ? {} : s.notifUnread) }}>
+                          {!n.is_read && <span style={s.notifDot} />}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={s.notifMsg}>{n.message}</div>
+                            <div style={s.notifTime}>{new Date(n.created_at).toLocaleString()}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={toggle}
+                title={isDark ? 'Light mode' : 'Dark mode'}
+                style={s.sideToggle}
+              >
+                {isDark ? '☀' : '☾'}
+              </button>
+            </div>
           )}
         </div>
 
@@ -170,7 +235,38 @@ const s = {
     background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.1)',
     color: '#A78BFA', cursor: 'pointer', fontSize: 14,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
+    position: 'relative',
   },
+  bellBadge: {
+    position: 'absolute', top: -5, right: -5,
+    background: '#EC4899', color: '#fff',
+    fontSize: 9, fontWeight: 800, borderRadius: 20,
+    padding: '1px 4px', lineHeight: 1.4, minWidth: 14,
+    textAlign: 'center',
+  },
+  notifDropdown: {
+    position: 'absolute', top: 38, right: 0,
+    width: 300, background: '#1E1033',
+    border: '1px solid rgba(124,58,237,.25)',
+    borderRadius: 14, boxShadow: '0 16px 40px rgba(0,0,0,.5)',
+    zIndex: 200, overflow: 'hidden',
+  },
+  notifHeader: {
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,.06)',
+  },
+  notifTitle: { fontSize: 12, fontWeight: 700, color: '#C4B5FD', textTransform: 'uppercase', letterSpacing: '0.07em' },
+  markReadBtn: { fontSize: 11, color: '#A78BFA', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 },
+  notifList: { maxHeight: 320, overflowY: 'auto' },
+  notifEmpty: { padding: '24px 16px', textAlign: 'center', color: '#6B7280', fontSize: 13 },
+  notifItem: {
+    display: 'flex', alignItems: 'flex-start', gap: 10,
+    padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,.04)',
+  },
+  notifUnread: { background: 'rgba(124,58,237,.08)' },
+  notifDot: { width: 7, height: 7, borderRadius: '50%', background: '#A78BFA', flexShrink: 0, marginTop: 4 },
+  notifMsg: { fontSize: 12, color: '#E5E7EB', lineHeight: 1.5 },
+  notifTime: { fontSize: 10, color: '#6B7280', marginTop: 3 },
   sideToggleCollapsed: {
     width: 34, height: 34, borderRadius: 10,
     background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.1)',

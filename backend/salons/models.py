@@ -40,11 +40,29 @@ class SalonCalendar(models.Model):
         return f"Calendar for {self.salon.name}"
 
 
+class FavouriteSalon(models.Model):
+    client = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='favourites',
+    )
+    salon = models.ForeignKey(Salon, on_delete=models.CASCADE, related_name='favourited_by')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['client', 'salon']
+
+    def __str__(self):
+        return f"{self.client.email} ♥ {self.salon.name}"
+
+
 class SalonStaff(models.Model):
     salon = models.ForeignKey(Salon, on_delete=models.CASCADE, related_name='staff')
     full_name = models.CharField(max_length=255)
     role = models.CharField(max_length=100, blank=True)
     phone = models.CharField(max_length=20, blank=True)
+    specialties = models.ManyToManyField('services.Service', blank=True, related_name='staff_specialties')
+    working_days = models.JSONField(default=list, blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

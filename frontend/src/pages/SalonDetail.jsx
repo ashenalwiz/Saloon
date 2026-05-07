@@ -62,6 +62,10 @@ export default function SalonDetail() {
   const [salon, setSalon]           = useState(null);
   const [services, setServices]     = useState([]);
   const [otherSalons, setOther]     = useState([]);
+  const [reviews, setReviews]       = useState([]);
+  const [summary, setSummary]       = useState(null);
+  const [isFav, setIsFav]           = useState(false);
+  const [favLoading, setFavLoading] = useState(false);
 
   useEffect(() => {
     api.get(`/salons/${id}/`).then(r => setSalon(r.data)).catch(() => {});
@@ -69,7 +73,21 @@ export default function SalonDetail() {
     api.get('/salons/').then(r =>
       setOther(r.data.filter(s => s.id !== +id && s.status === 'active').slice(0, 4))
     ).catch(() => {});
-  }, [id]);
+    api.get(`/salons/${id}/reviews/`).then(r => setReviews(r.data)).catch(() => {});
+    api.get(`/salons/${id}/reviews/summary/`).then(r => setSummary(r.data)).catch(() => {});
+    if (profile?.role === 'client') {
+      api.get(`/salons/${id}/favourite/`).then(r => setIsFav(r.data.is_favourited)).catch(() => {});
+    }
+  }, [id, profile]);
+
+  const toggleFav = async () => {
+    if (!profile || profile.role !== 'client') return;
+    setFavLoading(true);
+    try {
+      const r = await api.post(`/salons/${id}/favourite/`);
+      setIsFav(r.data.is_favourited);
+    } catch {} finally { setFavLoading(false); }
+  };
 
   if (!salon) return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh', background: 'var(--bg)' }}>
@@ -103,9 +121,9 @@ export default function SalonDetail() {
 
               {/* Rating */}
               <div style={s.ratingRow}>
-                <Stars rating={5} size={16} />
-                <span style={s.ratingNum}>4.8</span>
-                <span style={s.ratingCt}>(24 reviews)</span>
+                <Stars rating={summary ? Math.round(summary.average_rating) : 5} size={16} />
+                <span style={s.ratingNum}>{summary ? summary.average_rating.toFixed(1) : '—'}</span>
+                <span style={s.ratingCt}>({summary ? summary.total_reviews : 0} review{summary?.total_reviews !== 1 ? 's' : ''})</span>
                 <span style={s.dot}>·</span>
                 <span style={s.openBadge}>
                   <span style={{ color: '#34D399', marginRight: 4 }}>●</span>
@@ -133,11 +151,31 @@ export default function SalonDetail() {
             </div>
           </div>
 
-          {isClient && (
-            <Link to={`/user/book/${id}`} style={s.heroBookBtn} className="lift-sm">
-              ✦ Book Now
-            </Link>
-          )}
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexShrink: 0 }}>
+            {isClient && (
+              <button
+                onClick={toggleFav}
+                disabled={favLoading}
+                title={isFav ? 'Remove from favourites' : 'Save to favourites'}
+                style={{
+                  width: 48, height: 48, borderRadius: 14, border: 'none',
+                  background: isFav ? 'rgba(236,72,153,.25)' : 'rgba(255,255,255,.12)',
+                  color: isFav ? '#EC4899' : 'rgba(255,255,255,.7)',
+                  fontSize: 22, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'all .2s ease',
+                  boxShadow: isFav ? '0 4px 14px rgba(236,72,153,.35)' : 'none',
+                }}
+              >
+                {isFav ? '♥' : '♡'}
+              </button>
+            )}
+            {isClient && (
+              <Link to={`/user/book/${id}`} style={s.heroBookBtn} className="lift-sm">
+                ✦ Book Now
+              </Link>
+            )}
+          </div>
         </div>
       </div>
 
@@ -225,29 +263,37 @@ export default function SalonDetail() {
               <div style={s.eyebrowSm}>What Clients Say</div>
               <h2 style={{ ...s.secTitle, margin: 0 }}>Reviews</h2>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 48, fontWeight: 800, color: 'var(--text)', lineHeight: 1 }}>4.8</div>
-              <div>
-                <Stars rating={5} size={16} />
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>Based on 24 reviews</div>
-              </div>
-            </div>
-          </div>
-          <div style={s.reviewGrid}>
-            {MOCK_REVIEWS.map((r, i) => (
-              <div key={i} style={s.reviewCard} className={`lift-sm fade-up d${i + 1}`}>
-                <div style={s.reviewTop}>
-                  <div style={s.reviewAvatar}>{r.name[0]}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={s.reviewName}>{r.name}</div>
-                    <div style={s.reviewDate}>{r.date}</div>
-                  </div>
-                  <Stars rating={r.rating} size={13} />
+            {summary && summary.total_reviews > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 48, fontWeight: 800, color: 'var(--text)', lineHeight: 1 }}>{summary.average_rating.toFixed(1)}</div>
+                <div>
+                  <Stars rating={Math.round(summary.average_rating)} size={16} />
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>Based on {summary.total_reviews} review{summary.total_reviews !== 1 ? 's' : ''}</div>
                 </div>
-                <p style={s.reviewText}>"{r.text}"</p>
               </div>
-            ))}
+            )}
           </div>
+          {reviews.length === 0 ? (
+            <div style={{ color: 'var(--text-muted)', fontSize: 14, padding: '20px 0', fontStyle: 'italic' }}>
+              No reviews yet. Be the first to review after your visit!
+            </div>
+          ) : (
+            <div style={s.reviewGrid}>
+              {reviews.slice(0, 5).map((r, i) => (
+                <div key={r.id} style={s.reviewCard} className={`lift-sm fade-up d${i + 1}`}>
+                  <div style={s.reviewTop}>
+                    <div style={s.reviewAvatar}>{(r.client_name || 'A')[0].toUpperCase()}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={s.reviewName}>{r.client_name || 'Anonymous'}</div>
+                      <div style={s.reviewDate}>{new Date(r.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</div>
+                    </div>
+                    <Stars rating={r.rating} size={13} />
+                  </div>
+                  {r.comment && <p style={s.reviewText}>"{r.comment}"</p>}
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* ── Google Map ── */}

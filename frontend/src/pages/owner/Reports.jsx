@@ -5,6 +5,19 @@ import { c, shadow } from '../../styles/theme';
 
 const TABS = ['Stock Overview', 'Low Stock', 'Movements'];
 
+function toCsv(rows, headers) {
+  const escape = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  return [headers.join(','), ...rows.map(r => Object.values(r).map(escape).join(','))].join('\n');
+}
+
+function downloadCsv(filename, rows, headers) {
+  const blob = new Blob([toCsv(rows, headers)], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function OwnerReports() {
   const { salon } = useOwner();
   const [tab, setTab] = useState(0);
@@ -58,6 +71,21 @@ export default function OwnerReports() {
         <div>
           <h2 style={s.title}>Reports</h2>
           <p style={s.sub}>Inventory analytics and stock movement history</p>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button style={s.exportBtn} onClick={() => {
+            downloadCsv('stock-overview.csv', products.map(p => ({
+              Name: p.name, Brand: p.brand || '', Category: p.category,
+              'Current Stock': p.current_stock, 'Reorder Level': p.reorder_level,
+              Unit: p.unit_of_measure, 'Cost Price': p.cost_price, 'Selling Price': p.selling_price,
+              'Stock Value': (p.current_stock * Number(p.cost_price || 0)).toFixed(2),
+            })), ['Name','Brand','Category','Current Stock','Reorder Level','Unit','Cost Price','Selling Price','Stock Value']);
+          }}>↓ Export Stock</button>
+          <button style={s.exportBtn} onClick={() => {
+            downloadCsv('movements.csv', filtered.map(m => ({
+              Date: new Date(m.date).toLocaleString(), Type: m.type, Product: m.product, Change: m.change, Note: m.note,
+            })), ['Date','Type','Product','Change','Note']);
+          }}>↓ Export Movements</button>
         </div>
       </div>
 
@@ -207,7 +235,11 @@ export default function OwnerReports() {
 }
 
 const s = {
-  pageHeader: { marginBottom: 24 },
+  pageHeader: { marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' },
+  exportBtn: {
+    padding: '8px 16px', background: c.surface, border: `1px solid ${c.border}`,
+    borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 600, color: c.text,
+  },
   title: { fontSize: 26, fontWeight: 700, color: c.text, margin: 0, marginBottom: 4 },
   sub: { color: c.textMuted, fontSize: 14, margin: 0 },
   statsRow: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 },

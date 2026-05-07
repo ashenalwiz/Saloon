@@ -28,11 +28,14 @@ import OwnerSales from './pages/owner/Sales';
 import OwnerAdjustments from './pages/owner/Adjustments';
 import OwnerReports from './pages/owner/Reports';
 import OwnerTeam from './pages/owner/Team';
+import OwnerPromotions from './pages/owner/Promotions';
+import OwnerAnalytics from './pages/owner/Analytics';
 
 import UserDashboard from './pages/user/Dashboard';
 import UserBookingList from './pages/user/BookingList';
 import UserBookingDetail from './pages/user/BookingDetail';
 import BookSalon from './pages/user/BookSalon';
+import UserFavourites from './pages/user/Favourites';
 
 function PublicLayout() {
   return (
@@ -87,6 +90,8 @@ export default function App() {
               <Route path="bookings/:id" element={<OwnerBookingDetail />} />
               <Route path="services" element={<OwnerServices />} />
               <Route path="team" element={<OwnerTeam />} />
+              <Route path="promotions" element={<OwnerPromotions />} />
+              <Route path="analytics" element={<OwnerAnalytics />} />
               <Route path="inventory" element={<OwnerInventory />} />
               <Route path="inventory/grn" element={<OwnerGRN />} />
               <Route path="inventory/sales" element={<OwnerSales />} />
@@ -103,6 +108,7 @@ export default function App() {
               <Route path="bookings" element={<UserBookingList />} />
               <Route path="bookings/:id" element={<UserBookingDetail />} />
               <Route path="book/:salonId" element={<BookSalon />} />
+              <Route path="favourites" element={<UserFavourites />} />
             </Route>
           </Route>
         </Routes>

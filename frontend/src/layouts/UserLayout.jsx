@@ -1,14 +1,147 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { NavLink, Outlet, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { c } from '../styles/theme';
+import api from '../api/axios';
 
 const NAV = [
-  { to: '/user/dashboard', label: 'Dashboard' },
-  { to: '/user/bookings',  label: 'My Bookings' },
-  { to: '/salons',         label: 'Browse Salons' },
+  { to: '/user/dashboard',   label: 'Dashboard' },
+  { to: '/user/bookings',    label: 'My Bookings' },
+  { to: '/user/favourites',  label: 'Favourites' },
+  { to: '/salons',           label: 'Browse Salons' },
 ];
+
+function NotificationBell() {
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const [notifs, setNotifs] = useState([]);
+  const [unread, setUnread] = useState(0);
+  const ref = useRef(null);
+
+  const fetchCount = () => api.get('/notifications/unread-count/').then(r => setUnread(r.data.count)).catch(() => {});
+  const fetchNotifs = () => api.get('/notifications/').then(r => setNotifs(r.data)).catch(() => {});
+
+  useEffect(() => {
+    fetchCount();
+    const iv = setInterval(fetchCount, 30000);
+    return () => clearInterval(iv);
+  }, []);
+
+  useEffect(() => {
+    const handleClick = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  const handleOpen = () => {
+    const next = !open;
+    setOpen(next);
+    if (next) fetchNotifs();
+  };
+
+  const markAllRead = async () => {
+    await api.post('/notifications/mark-read/').catch(() => {});
+    setUnread(0);
+    setNotifs(prev => prev.map(n => ({ ...n, is_read: true })));
+  };
+
+  const handleNotifClick = (n) => {
+    setOpen(false);
+    if (!n.is_read) {
+      api.patch(`/notifications/${n.id}/read/`).catch(() => {});
+      setUnread(prev => Math.max(0, prev - 1));
+      setNotifs(prev => prev.map(x => x.id === n.id ? { ...x, is_read: true } : x));
+    }
+    if (n.booking_id) navigate(`/user/bookings/${n.booking_id}`);
+  };
+
+  const TYPE_ICON = { booking_confirmed: '✓', booking_awaiting: '⚡', booking_cancelled: '✕', general: '•' };
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button onClick={handleOpen} style={nb.bell} title="Notifications">
+        🔔
+        {unread > 0 && <span style={nb.badge}>{unread > 9 ? '9+' : unread}</span>}
+      </button>
+      {open && (
+        <div style={nb.dropdown}>
+          <div style={nb.dropHeader}>
+            <span style={nb.dropTitle}>Notifications</span>
+            {unread > 0 && <button style={nb.markAll} onClick={markAllRead}>Mark all read</button>}
+          </div>
+          <div style={nb.list}>
+            {notifs.length === 0 && <div style={nb.empty}>No notifications yet</div>}
+            {notifs.map(n => (
+              <div key={n.id} style={{ ...nb.item, background: n.is_read ? 'transparent' : 'rgba(124,58,237,.06)' }} onClick={() => handleNotifClick(n)}>
+                <div style={{ ...nb.typeIcon, color: n.notif_type === 'booking_confirmed' ? '#059669' : n.notif_type === 'booking_cancelled' ? '#DC2626' : '#D97706' }}>
+                  {TYPE_ICON[n.notif_type] || '•'}
+                </div>
+                <div style={nb.itemBody}>
+                  <div style={nb.itemMsg}>{n.message}</div>
+                  <div style={nb.itemTime}>{new Date(n.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+                </div>
+                {!n.is_read && <div style={nb.dot} />}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const nb = {
+  bell: {
+    position: 'relative', background: 'none', border: 'none', cursor: 'pointer',
+    fontSize: 18, padding: '4px 6px', borderRadius: 8, lineHeight: 1,
+  },
+  badge: {
+    position: 'absolute', top: -2, right: -2,
+    background: '#DC2626', color: '#fff',
+    fontSize: 9, fontWeight: 800, borderRadius: 20,
+    padding: '1px 4px', minWidth: 14, textAlign: 'center',
+    border: '1.5px solid var(--surface)',
+  },
+  dropdown: {
+    position: 'absolute', top: 'calc(100% + 10px)', right: 0,
+    width: 320, background: 'var(--surface)',
+    border: '1px solid var(--border)', borderRadius: 16,
+    boxShadow: '0 8px 32px rgba(0,0,0,.14)',
+    zIndex: 500, overflow: 'hidden',
+  },
+  dropHeader: {
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    padding: '14px 18px', borderBottom: '1px solid var(--border)',
+  },
+  dropTitle: { fontFamily: "'Playfair Display', serif", fontSize: 14, fontWeight: 700, color: 'var(--text)' },
+  markAll: {
+    fontSize: 11, color: '#7C3AED', background: 'none', border: 'none',
+    cursor: 'pointer', fontWeight: 600, padding: '3px 8px',
+    background: '#F5F3FF', borderRadius: 6,
+  },
+  list: { maxHeight: 380, overflowY: 'auto' },
+  empty: { padding: '24px 18px', fontSize: 13, color: 'var(--text-muted)', textAlign: 'center' },
+  item: {
+    display: 'flex', alignItems: 'flex-start', gap: 10,
+    padding: '12px 18px', cursor: 'pointer',
+    borderBottom: '1px solid var(--border)',
+    transition: 'background .15s ease',
+  },
+  typeIcon: {
+    width: 24, height: 24, borderRadius: '50%',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: 11, fontWeight: 700, flexShrink: 0,
+    background: 'var(--surface2)', marginTop: 2,
+  },
+  itemBody: { flex: 1 },
+  itemMsg: { fontSize: 12, color: 'var(--text)', lineHeight: 1.5, marginBottom: 3 },
+  itemTime: { fontSize: 10, color: 'var(--text-muted)' },
+  dot: {
+    width: 7, height: 7, borderRadius: '50%',
+    background: '#7C3AED', flexShrink: 0, marginTop: 6,
+  },
+};
 
 export default function UserLayout() {
   const { profile, logout } = useAuth();
@@ -76,8 +209,9 @@ export default function UserLayout() {
             ))}
           </nav>
 
-          {/* Right: theme toggle + user */}
+          {/* Right: notifications + theme toggle + user */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto' }}>
+            <NotificationBell />
             <button
               onClick={toggle}
               className="theme-toggle"

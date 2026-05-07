@@ -4,6 +4,10 @@ from .views import (
     SalonApproveView, SalonRejectView, PendingSalonsView,
     AllSalonsAdminView, AvailableSlotsView, MySalonView,
     SalonStaffListCreateView, SalonStaffDetailView,
+    AvailableStaffView,
+    FavouriteSalonView, ClientFavouritesView,
+    SalonReviewListView, SalonReviewSummaryView,
+    SalonAnalyticsView,
 )
 
 urlpatterns = [
@@ -13,8 +17,14 @@ urlpatterns = [
     path('salons/<int:pk>/approve/', SalonApproveView.as_view(), name='salon-approve'),
     path('salons/<int:pk>/reject/', SalonRejectView.as_view(), name='salon-reject'),
     path('salons/<int:pk>/staff/', SalonStaffListCreateView.as_view(), name='salon-staff'),
+    path('salons/<int:pk>/staff/available/', AvailableStaffView.as_view(), name='salon-staff-available'),
     path('salons/<int:pk>/staff/<int:staff_pk>/', SalonStaffDetailView.as_view(), name='salon-staff-detail'),
+    path('salons/<int:pk>/favourite/', FavouriteSalonView.as_view(), name='salon-favourite'),
+    path('salons/<int:pk>/reviews/', SalonReviewListView.as_view(), name='salon-reviews'),
+    path('salons/<int:pk>/reviews/summary/', SalonReviewSummaryView.as_view(), name='salon-review-summary'),
     path('salons/<int:pk>/calendar/available-slots/', AvailableSlotsView.as_view(), name='salon-slots'),
+    path('salons/<int:pk>/analytics/', SalonAnalyticsView.as_view(), name='salon-analytics'),
+    path('client/favourites/', ClientFavouritesView.as_view(), name='client-favourites'),
     path('admin/salons/pending/', PendingSalonsView.as_view(), name='admin-pending-salons'),
     path('admin/salons/', AllSalonsAdminView.as_view(), name='admin-all-salons'),
     path('owner/salon/', MySalonView.as_view(), name='my-salon'),

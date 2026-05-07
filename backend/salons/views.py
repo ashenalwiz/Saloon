@@ -4,8 +4,11 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.db.models import Avg, Sum, F
 from datetime import datetime, timedelta
-from .models import Salon, SalonCalendar, SalonStaff
+from collections import defaultdict
+
+from .models import Salon, SalonCalendar, SalonStaff, FavouriteSalon
 from .serializers import SalonSerializer, SalonRegisterSerializer, SalonStaffSerializer
 from users.permissions import IsSystemAdmin, IsSalonOwner
 from bookings.models import Booking
@@ -93,7 +96,6 @@ class AllSalonsAdminView(APIView):
 
 
 class MySalonView(APIView):
-    """Returns the authenticated salon_owner's salon (any status)."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -122,8 +124,11 @@ class SalonStaffListCreateView(APIView):
             return Response({'detail': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
         serializer = SalonStaffSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save(salon=salon)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            member = serializer.save(salon=salon)
+            specialty_ids = request.data.get('specialties', [])
+            if specialty_ids:
+                member.specialties.set(specialty_ids)
+            return Response(SalonStaffSerializer(member).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -137,8 +142,10 @@ class SalonStaffDetailView(APIView):
         member = get_object_or_404(SalonStaff, pk=staff_pk, salon=salon)
         serializer = SalonStaffSerializer(member, data=request.data, partial=True)
         if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
+            member = serializer.save()
+            if 'specialties' in request.data:
+                member.specialties.set(request.data['specialties'])
+            return Response(SalonStaffSerializer(member).data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk, staff_pk):
@@ -151,6 +158,170 @@ class SalonStaffDetailView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class AvailableStaffView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        salon = get_object_or_404(Salon, pk=pk)
+        if request.user.role == 'salon_owner' and salon.owner_id != request.user.id:
+            return Response({'detail': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
+
+        date_str = request.query_params.get('date')
+        if not date_str:
+            return Response({'detail': 'date parameter required'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            slot_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            return Response({'detail': 'Invalid date format, use YYYY-MM-DD'}, status=status.HTTP_400_BAD_REQUEST)
+
+        day_name = slot_date.strftime('%A').lower()
+        all_staff = salon.staff.filter(is_active=True)
+        available = [m for m in all_staff if day_name in (m.working_days or [])]
+        return Response(SalonStaffSerializer(available, many=True).data)
+
+
+class FavouriteSalonView(APIView):
+    def get_permissions(self):
+        return [AllowAny()] if self.request.method == 'GET' else [IsAuthenticated()]
+
+    def get(self, request, pk):
+        if not request.user.is_authenticated or request.user.role != 'client':
+            return Response({'is_favourited': False})
+        salon = get_object_or_404(Salon, pk=pk)
+        return Response({'is_favourited': FavouriteSalon.objects.filter(client=request.user, salon=salon).exists()})
+
+    def post(self, request, pk):
+        if request.user.role != 'client':
+            return Response({'detail': 'Only clients can favourite salons'}, status=status.HTTP_403_FORBIDDEN)
+        salon = get_object_or_404(Salon, pk=pk)
+        fav, created = FavouriteSalon.objects.get_or_create(client=request.user, salon=salon)
+        if not created:
+            fav.delete()
+            return Response({'is_favourited': False})
+        return Response({'is_favourited': True})
+
+
+class ClientFavouritesView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role != 'client':
+            return Response({'detail': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
+        salons = Salon.objects.filter(favourited_by__client=request.user, status='active')
+        return Response(SalonSerializer(salons, many=True).data)
+
+
+class SalonReviewListView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, pk):
+        from bookings.models import Review
+        from bookings.serializers import ReviewSerializer
+        salon = get_object_or_404(Salon, pk=pk)
+        reviews = Review.objects.filter(salon=salon).select_related('client').order_by('-created_at')[:20]
+        return Response(ReviewSerializer(reviews, many=True).data)
+
+
+class SalonReviewSummaryView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, pk):
+        from bookings.models import Review
+        salon = get_object_or_404(Salon, pk=pk)
+        reviews = Review.objects.filter(salon=salon)
+        total = reviews.count()
+        if total == 0:
+            return Response({'average_rating': 0, 'total_reviews': 0, 'breakdown': {str(i): 0 for i in range(1, 6)}})
+        avg = reviews.aggregate(avg=Avg('rating'))['avg']
+        breakdown = {str(i): reviews.filter(rating=i).count() for i in range(1, 6)}
+        return Response({
+            'average_rating': round(float(avg), 1),
+            'total_reviews': total,
+            'breakdown': breakdown,
+        })
+
+
+class SalonAnalyticsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        salon = get_object_or_404(Salon, pk=pk)
+        if request.user.role != 'salon_owner' or salon.owner_id != request.user.id:
+            return Response({'detail': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
+
+        period = request.query_params.get('period', 'month')
+        now = timezone.now()
+        if period == 'week':
+            start = now - timedelta(days=7)
+        elif period == 'year':
+            start = now - timedelta(days=365)
+        else:
+            start = now - timedelta(days=30)
+
+        from bookings.models import BookingService as BS
+        from inventory.models import SaleItem
+
+        bookings_qs = Booking.objects.filter(salon=salon, created_at__gte=start)
+        completed_qs = bookings_qs.filter(status='completed').prefetch_related('booking_services__salon_service')
+        cancelled_count = bookings_qs.filter(status='cancelled').count()
+        total_bookings = bookings_qs.count()
+        completed_count = completed_qs.count()
+
+        # Revenue from completed bookings
+        total_revenue = 0.0
+        day_revenue = defaultdict(float)
+        for b in completed_qs:
+            svc_total = sum(float(bs.salon_service.effective_price) for bs in b.booking_services.all())
+            rev = max(0.0, svc_total - float(b.discount_amount))
+            total_revenue += rev
+            day_revenue[b.created_at.strftime('%Y-%m-%d')] += rev
+
+        cancellation_rate = round(cancelled_count / total_bookings * 100, 1) if total_bookings > 0 else 0.0
+
+        # Top services
+        svc_counts = defaultdict(int)
+        svc_revenue = defaultdict(float)
+        for bs in BS.objects.filter(
+            booking__salon=salon, booking__status='completed', booking__created_at__gte=start
+        ).select_related('salon_service__service'):
+            name = bs.salon_service.service.name
+            svc_counts[name] += 1
+            svc_revenue[name] += float(bs.salon_service.effective_price)
+
+        top_services = sorted(
+            [{'service_name': k, 'count': svc_counts[k], 'revenue': round(svc_revenue[k], 2)} for k in svc_counts],
+            key=lambda x: x['count'], reverse=True
+        )[:5]
+
+        # Busiest slots by hour
+        hour_counts = defaultdict(int)
+        for b in bookings_qs.filter(status__in=['confirmed', 'completed']):
+            hour_counts[b.requested_datetime.hour] += 1
+        busiest_slots = sorted(
+            [{'hour': h, 'count': c} for h, c in hour_counts.items()],
+            key=lambda x: x['count'], reverse=True
+        )[:5]
+
+        revenue_by_day = [{'date': d, 'revenue': round(r, 2)} for d, r in sorted(day_revenue.items())]
+
+        product_sales_revenue = float(
+            SaleItem.objects.filter(sale__salon=salon, sale__created_at__gte=start)
+            .aggregate(total=Sum(F('quantity') * F('unit_price')))['total'] or 0
+        )
+
+        return Response({
+            'total_revenue': round(total_revenue, 2),
+            'total_bookings': total_bookings,
+            'completed_bookings': completed_count,
+            'cancelled_bookings': cancelled_count,
+            'cancellation_rate': cancellation_rate,
+            'top_services': top_services,
+            'busiest_slots': busiest_slots,
+            'revenue_by_day': revenue_by_day,
+            'product_sales_revenue': round(product_sales_revenue, 2),
+        })
+
+
 class AvailableSlotsView(APIView):
     permission_classes = [AllowAny]
 
@@ -161,7 +332,6 @@ class AvailableSlotsView(APIView):
 
         if not date_str:
             return Response({'detail': 'date parameter required'}, status=status.HTTP_400_BAD_REQUEST)
-
         try:
             slot_date = datetime.strptime(date_str, '%Y-%m-%d').date()
         except ValueError:
@@ -208,14 +378,8 @@ class AvailableSlotsView(APIView):
         current = open_dt
         while current < close_dt:
             aware = timezone.make_aware(current) if timezone.is_naive(current) else current
-            is_taken = any(
-                abs((t - aware).total_seconds()) < 60
-                for t in taken_datetimes
-            )
-            slots.append({
-                'datetime': current.strftime('%Y-%m-%dT%H:%M'),
-                'available': not is_taken,
-            })
+            is_taken = any(abs((t - aware).total_seconds()) < 60 for t in taken_datetimes)
+            slots.append({'datetime': current.strftime('%Y-%m-%dT%H:%M'), 'available': not is_taken})
             current += timedelta(minutes=duration)
 
         return Response({'slots': slots})

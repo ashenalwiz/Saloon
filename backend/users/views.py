@@ -1,10 +1,12 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
-from .serializers import RegisterSerializer, UserSerializer
+from django.shortcuts import get_object_or_404
+from .models import Notification
+from .serializers import RegisterSerializer, UserSerializer, NotificationSerializer
 
 
 class RegisterView(APIView):
@@ -38,3 +40,37 @@ class LoginView(APIView):
             'access': str(refresh.access_token),
             'refresh': str(refresh),
         })
+
+
+class NotificationListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        notifs = Notification.objects.filter(recipient=request.user)[:50]
+        return Response(NotificationSerializer(notifs, many=True).data)
+
+
+class NotificationUnreadCountView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        count = Notification.objects.filter(recipient=request.user, is_read=False).count()
+        return Response({'count': count})
+
+
+class NotificationMarkAllReadView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        Notification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
+        return Response({'status': 'ok'})
+
+
+class NotificationMarkOneReadView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk):
+        notif = get_object_or_404(Notification, pk=pk, recipient=request.user)
+        notif.is_read = True
+        notif.save()
+        return Response(NotificationSerializer(notif).data)

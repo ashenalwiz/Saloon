@@ -3,11 +3,35 @@ import { useParams, Link } from 'react-router-dom';
 import api from '../../api/axios';
 import { c, STATUS_META } from '../../styles/theme';
 
+function StarPicker({ value, onChange }) {
+  const [hover, setHover] = useState(0);
+  return (
+    <div style={{ display: 'flex', gap: 4 }}>
+      {[1,2,3,4,5].map(n => (
+        <button
+          key={n} type="button"
+          onMouseEnter={() => setHover(n)} onMouseLeave={() => setHover(0)}
+          onClick={() => onChange(n)}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer', fontSize: 30, lineHeight: 1, padding: '2px 3px',
+            color: n <= (hover || value) ? '#F59E0B' : 'var(--border)',
+            transition: 'color .12s ease, transform .12s ease',
+            transform: n <= (hover || value) ? 'scale(1.18)' : 'scale(1)',
+          }}
+        >★</button>
+      ))}
+    </div>
+  );
+}
+
 export default function UserBookingDetail() {
   const { id } = useParams();
   const [booking, setBooking] = useState(null);
   const [error, setError] = useState('');
   const [msg, setMsg] = useState('');
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
 
   const load = () => api.get(`/bookings/${id}/`).then(r => setBooking(r.data)).catch(() => {});
   useEffect(() => { load(); }, [id]);
@@ -21,6 +45,17 @@ export default function UserBookingDetail() {
   const selectSlot = async slotId => {
     try { await api.post(`/bookings/${id}/select-slot/`, { slot_id: slotId }); setMsg('Slot confirmed! The salon will finalise shortly.'); load(); }
     catch (err) { setError(err.response?.data?.detail || 'Error'); }
+  };
+
+  const submitReview = async () => {
+    if (!reviewRating) return setError('Please select a star rating');
+    setReviewSubmitting(true); setError('');
+    try {
+      await api.post(`/bookings/${id}/review/`, { rating: reviewRating, comment: reviewComment });
+      setMsg('Thank you for your review!');
+      load();
+    } catch (err) { setError(err.response?.data?.detail || 'Error submitting review'); }
+    finally { setReviewSubmitting(false); }
   };
 
   if (!booking) return (
@@ -128,6 +163,48 @@ export default function UserBookingDetail() {
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {/* Review section */}
+        {booking.status === 'completed' && !booking.has_review && (
+          <div style={s.reviewSection}>
+            <div style={s.reviewHeader}>
+              <span style={{ fontSize: 20 }}>★</span>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', marginBottom: 2 }}>Leave a Review</div>
+                <div style={{ fontSize: 12, color: c.textMuted }}>How was your experience at {booking.salon_name}?</div>
+              </div>
+            </div>
+            <StarPicker value={reviewRating} onChange={setReviewRating} />
+            <textarea
+              style={s.reviewTextarea}
+              rows={3}
+              placeholder="Share your experience (optional)…"
+              value={reviewComment}
+              onChange={e => setReviewComment(e.target.value)}
+            />
+            <button style={{ ...s.reviewSubmitBtn, opacity: reviewSubmitting ? 0.7 : 1 }} onClick={submitReview} disabled={reviewSubmitting}>
+              {reviewSubmitting ? 'Submitting…' : 'Submit Review'}
+            </button>
+          </div>
+        )}
+        {booking.status === 'completed' && booking.has_review && booking.review && (
+          <div style={s.reviewSection}>
+            <div style={s.reviewHeader}>
+              <span style={{ fontSize: 20 }}>★</span>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', marginBottom: 2 }}>Your Review</div>
+                <div style={{ display: 'flex', gap: 3 }}>
+                  {[1,2,3,4,5].map(n => (
+                    <span key={n} style={{ fontSize: 18, color: n <= booking.review.rating ? '#F59E0B' : 'var(--border)' }}>★</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+            {booking.review.comment && (
+              <p style={{ fontSize: 13, color: c.textSub, fontStyle: 'italic', margin: '8px 0 0' }}>"{booking.review.comment}"</p>
+            )}
           </div>
         )}
 
@@ -254,9 +331,31 @@ const s = {
     boxShadow: '0 3px 10px rgba(5,150,105,.25)',
   },
 
+  reviewSection: {
+    margin: '0 28px 20px',
+    background: 'linear-gradient(135deg, #FFFBF0 0%, #FEF9EC 100%)',
+    borderRadius: 16, padding: 20,
+    border: '1px solid #FDE68A',
+  },
+  reviewHeader: { display: 'flex', gap: 12, marginBottom: 14, alignItems: 'flex-start' },
+  reviewTextarea: {
+    width: '100%', marginTop: 12, padding: '10px 14px',
+    border: '1.5px solid var(--border)', borderRadius: 10,
+    fontSize: 13, resize: 'vertical', fontFamily: 'inherit',
+    background: 'var(--input-bg)', color: 'var(--text)',
+    boxSizing: 'border-box', minHeight: 80,
+  },
+  reviewSubmitBtn: {
+    marginTop: 10, padding: '9px 22px',
+    background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
+    color: '#fff', border: 'none', borderRadius: 10,
+    cursor: 'pointer', fontWeight: 700, fontSize: 13,
+    boxShadow: '0 4px 12px rgba(245,158,11,.3)',
+  },
+
   actions: {
     padding: '20px 28px 24px',
-    borderTop: '1px solid #F9FAFB',
+    borderTop: '1px solid var(--border)',
   },
   cancelBtn: {
     padding: '10px 22px',

@@ -28,6 +28,14 @@ class Booking(models.Model):
         on_delete=models.SET_NULL,
         related_name='bookings',
     )
+    promo_code = models.ForeignKey(
+        'Promotion',
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='booking_set',
+    )
+    discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    is_walk_in = models.BooleanField(default=False)
     requested_datetime = models.DateTimeField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     negotiation_round = models.PositiveIntegerField(default=0)
@@ -55,3 +63,41 @@ class AlternativeSlot(models.Model):
 
     def __str__(self):
         return f"Slot for Booking #{self.booking_id} round {self.round_number}"
+
+
+class Promotion(models.Model):
+    DISCOUNT_TYPES = [('percentage', 'Percentage'), ('fixed', 'Fixed Amount')]
+
+    salon = models.ForeignKey(Salon, on_delete=models.CASCADE, related_name='promotions')
+    code = models.CharField(max_length=50)
+    discount_type = models.CharField(max_length=20, choices=DISCOUNT_TYPES)
+    discount_value = models.DecimalField(max_digits=10, decimal_places=2)
+    valid_from = models.DateField()
+    valid_until = models.DateField()
+    min_booking_value = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    max_uses = models.PositiveIntegerField(default=100)
+    times_used = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['salon', 'code']
+
+    def __str__(self):
+        return f"{self.code} ({self.salon.name})"
+
+
+class Review(models.Model):
+    booking = models.OneToOneField(Booking, on_delete=models.CASCADE, related_name='review')
+    client = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='reviews',
+    )
+    salon = models.ForeignKey(Salon, on_delete=models.CASCADE, related_name='reviews')
+    rating = models.PositiveSmallIntegerField()
+    comment = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.client.email} → {self.salon.name} {self.rating}★"

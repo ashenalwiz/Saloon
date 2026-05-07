@@ -40,3 +40,29 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.email
+
+
+class Notification(models.Model):
+    NOTIF_TYPES = [
+        ('booking_confirmed', 'Booking Confirmed'),
+        ('booking_awaiting',  'Awaiting Client Action'),
+        ('booking_cancelled', 'Booking Cancelled'),
+        ('general', 'General'),
+    ]
+
+    recipient = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name='notifications',
+    )
+    message = models.TextField()
+    notif_type = models.CharField(max_length=30, choices=NOTIF_TYPES, default='general')
+    is_read = models.BooleanField(default=False)
+    booking_id = models.PositiveIntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Notif → {self.recipient.email}: {self.message[:40]}"

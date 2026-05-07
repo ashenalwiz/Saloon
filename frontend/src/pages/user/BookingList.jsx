@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import { c, STATUS_META } from '../../styles/theme';
 
@@ -9,10 +9,19 @@ export default function UserBookingList() {
   const [bookings, setBookings] = useState([]);
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     api.get('/bookings/').then(r => setBookings(r.data)).catch(() => {}).finally(() => setLoading(false));
   }, []);
+
+  const rebook = async (bookingId) => {
+    try {
+      const r = await api.post(`/bookings/${bookingId}/rebook/`);
+      const { salon_id, service_ids } = r.data;
+      navigate(`/user/book/${salon_id}?services=${service_ids.join(',')}`);
+    } catch {}
+  };
 
   const shown = filter === 'all' ? bookings : bookings.filter(b => b.status === filter);
 
@@ -113,6 +122,9 @@ export default function UserBookingList() {
                 {b.negotiation_round > 0 && (
                   <span style={s.roundTag}>Round {b.negotiation_round}/5</span>
                 )}
+                {b.status === 'completed' && (
+                  <button style={s.rebookBtn} onClick={() => rebook(b.id)}>↩ Book Again</button>
+                )}
                 <Link to={`/user/bookings/${b.id}`} style={s.detailBtn}>Details →</Link>
               </div>
             </div>
@@ -203,6 +215,11 @@ const s = {
   },
   badge: { display: 'inline-flex', padding: '3px 11px', borderRadius: 20, fontSize: 11, fontWeight: 700 },
   roundTag: { fontSize: 10, color: c.textLight },
+  rebookBtn: {
+    fontSize: 12, color: '#059669', fontWeight: 600,
+    padding: '5px 12px', background: '#ECFDF5', border: '1px solid #6EE7B7',
+    borderRadius: 8, cursor: 'pointer', transition: 'background .15s ease',
+  },
   detailBtn: {
     fontSize: 13, color: c.primary, fontWeight: 700,
     padding: '6px 14px', background: c.primarySoft, borderRadius: 8,
